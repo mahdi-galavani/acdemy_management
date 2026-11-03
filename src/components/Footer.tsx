@@ -1,9 +1,59 @@
 import React from 'react';
-import { UtensilsCrossed, MapPin, Phone, Mail, Instagram, Clock } from 'lucide-react';
+import {
+  UtensilsCrossed,
+  MapPin,
+  Phone,
+  Clock,
+  Instagram,
+  Send,
+  MessageSquare,
+  MessageCircle,
+  Video,
+  Youtube,
+  Radio,
+  Linkedin,
+  Bookmark,
+  Share2,
+  Globe,
+  ExternalLink
+} from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { SocialPlatform } from '../types';
+
+const SocialPlatformIcon: React.FC<{ platform: SocialPlatform; className?: string }> = ({
+  platform,
+  className = 'w-4 h-4'
+}) => {
+  switch (platform) {
+    case 'instagram':
+      return <Instagram className={className} />;
+    case 'telegram':
+      return <Send className={className} />;
+    case 'eitaa':
+      return <MessageCircle className={className} />;
+    case 'bale':
+      return <Radio className={className} />;
+    case 'whatsapp':
+      return <MessageSquare className={className} />;
+    case 'rubika':
+      return <Share2 className={className} />;
+    case 'aparat':
+      return <Video className={className} />;
+    case 'youtube':
+      return <Youtube className={className} />;
+    case 'pinterest':
+      return <Bookmark className={className} />;
+    case 'linkedin':
+      return <Linkedin className={className} />;
+    default:
+      return <Globe className={className} />;
+  }
+};
 
 export const Footer: React.FC = () => {
-  const { setCurrentView } = useApp();
+  const { setCurrentView, siteSettings } = useApp();
+
+  const activeSocialLinks = (siteSettings.socialLinks || []).filter((s) => s.isActive);
 
   return (
     <footer id="contact" className="bg-stone-900 text-stone-300 pt-16 pb-12 border-t border-stone-800">
@@ -14,16 +64,24 @@ export const Footer: React.FC = () => {
           {/* Col 1: Brand & Bio */}
           <div className="md:col-span-1 space-y-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-amber-700 flex items-center justify-center text-white">
-                <UtensilsCrossed className="w-5 h-5" />
-              </div>
-              <span className="font-extrabold text-lg text-white">آموزشگاه فندق</span>
+              {siteSettings.logoImageUrl ? (
+                <img
+                  src={siteSettings.logoImageUrl}
+                  alt={siteSettings.brandName}
+                  className="w-9 h-9 rounded-xl object-cover"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-xl bg-amber-700 flex items-center justify-center text-white">
+                  <UtensilsCrossed className="w-5 h-5" />
+                </div>
+              )}
+              <span className="font-extrabold text-lg text-white">{siteSettings.brandName}</span>
             </div>
             <p className="text-xs text-stone-400 leading-relaxed">
-              مرکز تخصصی آموزش هنر شیرینی‌پزی، دکور کیک‌های مدرن، دسرهای فرانسوی و نان‌های حجیم زیر نظر سازمان آموزش فنی‌وحرفه‌ای کشور.
+              {siteSettings.footerBio}
             </p>
             <div className="text-xs text-amber-400 font-medium pt-1">
-              دارای مجوز رسمی شماره ۹۸/۲۴۰۱
+              {siteSettings.licenseNumber}
             </div>
           </div>
 
@@ -57,15 +115,17 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2.5 text-xs text-stone-400">
               <li className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                <span>تهران، خیابان ولیعصر، بالاتر از میدان ونک، کوچه شهید فلاحی، پلاک ۱۸، ساختمان آکادمی فندق</span>
+                <span>{siteSettings.address}</span>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-amber-500 shrink-0" />
-                <span className="tabular-nums">۰۲۱-۸۸۸۸۰۰۰۰ | ۰۹۱۲۳۴۵۶۷۸۹</span>
+                <span className="tabular-nums">
+                  {siteSettings.phone} {siteSettings.mobile ? `| ${siteSettings.mobile}` : ''}
+                </span>
               </li>
               <li className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-amber-500 shrink-0" />
-                <span>شنبه تا پنج‌شنبه: ۹:۰۰ الی ۱۹:۰۰</span>
+                <span>{siteSettings.workingHours}</span>
               </li>
             </ul>
           </div>
@@ -74,7 +134,7 @@ export const Footer: React.FC = () => {
           <div className="space-y-3">
             <h4 className="font-bold text-sm text-white">آتلیه سفارشات اختصاصی</h4>
             <p className="text-xs text-stone-400 leading-relaxed">
-              جهت سفارش کیک‌های خاص نامزدی، عروسی و رویدادهای شرکتی با طراحی اختصاصی، همه‌روزه می‌توانید جهت مشاوره حضوری و تست طعم فیلینگ به آتلیه فندق مراجعه فرمایید.
+              جهت سفارش کیک‌های خاص نامزدی، عروسی و رویدادهای شرکتی با طراحی اختصاصی، همه‌روزه می‌توانید جهت مشاوره حضوری و تست طعم فیلینگ به آتلیه {siteSettings.brandName} مراجعه فرمایید.
             </p>
             <div className="p-3 rounded-xl bg-stone-800/80 border border-stone-700/60 text-[11px] text-stone-300">
               ارسال امن با خودروهای مجهز به یخچال در سراسر تهران و حومه.
@@ -83,10 +143,42 @@ export const Footer: React.FC = () => {
 
         </div>
 
+        {/* Dynamic Social Networks Bar */}
+        {activeSocialLinks.length > 0 && (
+          <div className="py-6 border-b border-stone-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-xs text-stone-300 font-bold flex items-center gap-2">
+              <Share2 className="w-4 h-4 text-amber-500" />
+              <span>فندق در شبکه‌های اجتماعی و پیام‌رسان‌ها:</span>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+              {activeSocialLinks.map((item) => (
+                <a
+                  key={item.id}
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={item.handle ? `${item.title} (${item.handle})` : item.title}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-amber-800/90 border border-stone-700/70 hover:border-amber-700 text-stone-300 hover:text-white transition-all text-xs group"
+                >
+                  <SocialPlatformIcon platform={item.platform} className="w-3.5 h-3.5 text-amber-400 group-hover:text-white transition-colors" />
+                  <span>{item.title}</span>
+                  {item.handle && (
+                    <span className="text-[10px] text-stone-500 group-hover:text-amber-200 ltr font-mono">
+                      {item.handle}
+                    </span>
+                  )}
+                  <ExternalLink className="w-3 h-3 opacity-40 group-hover:opacity-100" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Bottom copyright */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-stone-500 gap-4">
-          <p>© تمامی حقوق برای آموزشگاه و آتلیه قنادی فندق محفوظ است.</p>
-          <p className="text-[11px]">طراحی شده برای آموزش تخصصی و سفارش آنلاین شیرینی و کیک</p>
+          <p>© تمامی حقوق برای {siteSettings.brandName} محفوظ است.</p>
+          <p className="text-[11px]">سامانه آموزشگاهی و سفارش آنلاین کیک و شیرینی</p>
         </div>
 
       </div>

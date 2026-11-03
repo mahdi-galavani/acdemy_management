@@ -26,7 +26,7 @@ const CAKE_SUBCATEGORIES = [
 ];
 
 export const LandingPage: React.FC = () => {
-  const { courses, products, cart, setIsCartDrawerOpen } = useApp();
+  const { courses, products, cart, setIsCartDrawerOpen, siteSettings } = useApp();
 
   // Courses filters
   const [courseCategoryFilter, setCourseCategoryFilter] = useState('all');
@@ -283,14 +283,14 @@ export const LandingPage: React.FC = () => {
           <div className="mt-12 p-6 sm:p-8 rounded-3xl bg-white border border-stone-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="space-y-1.5 text-center md:text-right">
               <span className="text-xs font-bold text-amber-900">سفارش پروژه‌های خاص و کیک‌های رویایی</span>
-              <h3 className="text-lg font-bold text-stone-900">طرح خاصی در اینستاگرام یا پینترست دیده‌اید؟</h3>
+              <h3 className="text-lg font-bold text-stone-900">{siteSettings.ordersNoticeTitle}</h3>
               <p className="text-xs text-stone-500 max-w-xl leading-relaxed">
-                تیم دکوراتوری آموزشگاه فندق با تجربه اجرای بیش از ۱,۲۰۰ کیک مجلل عروسی و تولد، توانایی مدل‌سازی و پیاده‌سازی هر طرح و استراکچر خاصی را داراست.
+                {siteSettings.ordersNoticeText}
               </p>
             </div>
 
             <a
-              href="https://wa.me/989123456789"
+              href={`https://wa.me/${siteSettings.whatsappNumber.replace(/[^0-9]/g, '')}`}
               target="_blank"
               rel="noreferrer"
               className="px-6 py-3 text-xs font-bold text-white bg-amber-800 hover:bg-amber-900 rounded-xl transition-all shadow-sm hover:shadow whitespace-nowrap shrink-0"

@@ -8,6 +8,7 @@ export const Navbar: React.FC = () => {
     setCurrentView,
     cart,
     setIsCartDrawerOpen,
+    siteSettings,
   } = useApp();
 
   const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -23,15 +24,23 @@ export const Navbar: React.FC = () => {
               onClick={() => setCurrentView('landing')}
               className="flex items-center gap-2.5 text-stone-900 group text-right"
             >
-              <div className="w-10 h-10 rounded-xl bg-amber-800 flex items-center justify-center text-amber-50 shadow-sm transition-transform group-hover:scale-105">
-                <UtensilsCrossed className="w-5 h-5 text-amber-200" />
-              </div>
+              {siteSettings.logoImageUrl ? (
+                <img
+                  src={siteSettings.logoImageUrl}
+                  alt={siteSettings.brandName}
+                  className="w-10 h-10 rounded-xl object-cover shadow-sm transition-transform group-hover:scale-105"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-amber-800 flex items-center justify-center text-amber-50 shadow-sm transition-transform group-hover:scale-105">
+                  <UtensilsCrossed className="w-5 h-5 text-amber-200" />
+                </div>
+              )}
               <div>
                 <span className="font-extrabold text-xl tracking-tight text-stone-900 block leading-tight">
-                  آموزشگاه فندق
+                  {siteSettings.brandName}
                 </span>
                 <span className="text-[11px] text-stone-500 font-medium block">
-                  آکادمی تخصصی قنادی و پتیسری
+                  {siteSettings.brandSubtitle}
                 </span>
               </div>
             </button>

@@ -1,6 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Course, Student, Product, Order, FAQItem, CartItem, OrderStatus, PaymentStatus } from '../types';
-import { INITIAL_COURSES, INITIAL_PRODUCTS, INITIAL_STUDENTS, INITIAL_ORDERS, INITIAL_FAQS } from '../data/initialData';
+import {
+  Course,
+  Student,
+  CourseEnrollment,
+  StudentStatus,
+  Product,
+  Order,
+  FAQItem,
+  CartItem,
+  OrderStatus,
+  PaymentStatus,
+  SiteSettings
+} from '../types';
+import { INITIAL_COURSES, INITIAL_PRODUCTS, INITIAL_STUDENTS, INITIAL_ORDERS, INITIAL_FAQS, INITIAL_SITE_SETTINGS } from '../data/initialData';
 
 interface Toast {
   id: string;
@@ -12,8 +24,8 @@ interface AppContextType {
   // Navigation & UI state
   currentView: 'landing' | 'admin';
   setCurrentView: (view: 'landing' | 'admin') => void;
-  activeAdminTab: 'overview' | 'students' | 'courses' | 'products' | 'orders' | 'faqs' | 'settings';
-  setActiveAdminTab: (tab: 'overview' | 'students' | 'courses' | 'products' | 'orders' | 'faqs' | 'settings') => void;
+  activeAdminTab: 'overview' | 'students' | 'courses' | 'products' | 'orders' | 'faqs' | 'site_settings' | 'settings';
+  setActiveAdminTab: (tab: 'overview' | 'students' | 'courses' | 'products' | 'orders' | 'faqs' | 'site_settings' | 'settings') => void;
   
   // Modals & Drawers
   selectedCourseForDetail: Course | null;
@@ -24,6 +36,7 @@ interface AppContextType {
   setIsCartDrawerOpen: (isOpen: boolean) => void;
   
   // Data state
+  siteSettings: SiteSettings;
   courses: Course[];
   students: Student[];
   products: Product[];
@@ -32,15 +45,41 @@ interface AppContextType {
   cart: CartItem[];
   toasts: Toast[];
 
+  // Site settings actions
+  updateSiteSettings: (newSettings: Partial<SiteSettings>) => void;
+
   // Course actions
   addCourse: (course: Omit<Course, 'id'>) => void;
   updateCourse: (id: string, course: Partial<Course>) => void;
   deleteCourse: (id: string) => void;
 
   // Student actions
-  addStudent: (student: Omit<Student, 'id' | 'registrationDate'>) => void;
+  addStudent: (student: {
+    fullName: string;
+    phone: string;
+    nationalCode?: string;
+    email?: string;
+    courseId: string;
+    courseTitle: string;
+    tuitionTotal: number;
+    tuitionPaid: number;
+    paymentStatus?: PaymentStatus;
+    certificateIssued?: boolean;
+    status?: StudentStatus;
+    notes?: string;
+  }) => void;
   updateStudent: (id: string, student: Partial<Student>) => void;
   deleteStudent: (id: string) => void;
+  enrollStudentInCourse: (studentId: string, enrollmentData: {
+    courseId: string;
+    courseTitle: string;
+    tuitionTotal: number;
+    tuitionPaid: number;
+    paymentStatus?: PaymentStatus;
+    notes?: string;
+  }) => void;
+  updateStudentEnrollment: (studentId: string, enrollmentId: string, updatedFields: Partial<CourseEnrollment>) => void;
+  deleteStudentEnrollment: (studentId: string, enrollmentId: string) => void;
 
   // Product actions
   addProduct: (product: Omit<Product, 'id'>) => void;
@@ -73,6 +112,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
+  SITE_SETTINGS: 'fandoq_site_settings_v1',
   COURSES: 'fandoq_courses_v1',
   STUDENTS: 'fandoq_students_v1',
   PRODUCTS: 'fandoq_products_v1',
@@ -83,12 +123,22 @@ const STORAGE_KEYS = {
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentView, setCurrentView] = useState<'landing' | 'admin'>('landing');
-  const [activeAdminTab, setActiveAdminTab] = useState<'overview' | 'students' | 'courses' | 'products' | 'orders' | 'faqs' | 'settings'>('overview');
+  const [activeAdminTab, setActiveAdminTab] = useState<'overview' | 'students' | 'courses' | 'products' | 'orders' | 'faqs' | 'site_settings' | 'settings'>('overview');
   
   const [selectedCourseForDetail, setSelectedCourseForDetail] = useState<Course | null>(null);
   const [selectedProductForOrder, setSelectedProductForOrder] = useState<Product | null>(null);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Site Settings state
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.SITE_SETTINGS);
+      return saved ? { ...INITIAL_SITE_SETTINGS, ...JSON.parse(saved) } : INITIAL_SITE_SETTINGS;
+    } catch {
+      return INITIAL_SITE_SETTINGS;
+    }
+  });
 
   // Courses state
   const [courses, setCourses] = useState<Course[]>(() => {
@@ -172,6 +222,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [faqs]);
 
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.SITE_SETTINGS, JSON.stringify(siteSettings));
+  }, [siteSettings]);
+
+  useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
   }, [cart]);
 
@@ -181,6 +235,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 3800);
+  };
+
+  const updateSiteSettings = (newFields: Partial<SiteSettings>) => {
+    setSiteSettings((prev) => ({ ...prev, ...newFields }));
+    showToast('تنظیمات عمومی سایت با موفقیت به‌روزرسانی شد.');
   };
 
   // Course handlers
@@ -206,19 +265,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Student handlers
-  const addStudent = (studentData: Omit<Student, 'id' | 'registrationDate'>) => {
+  const addStudent = (studentData: {
+    fullName: string;
+    phone: string;
+    nationalCode?: string;
+    email?: string;
+    courseId: string;
+    courseTitle: string;
+    tuitionTotal: number;
+    tuitionPaid: number;
+    paymentStatus?: PaymentStatus;
+    certificateIssued?: boolean;
+    status?: StudentStatus;
+    notes?: string;
+  }) => {
     const dateStr = new Date().toLocaleDateString('fa-IR');
-    const newStudent: Student = {
-      ...studentData,
-      id: `std-${Date.now()}`,
-      registrationDate: dateStr,
-    };
-    setStudents((prev) => [newStudent, ...prev]);
+    const cleanPhone = studentData.phone.trim();
+    
+    // Check if a student with the same phone already exists
+    const existingIndex = students.findIndex((s) => s.phone.trim() === cleanPhone);
 
-    // increment enrolledCount in corresponding course
+    const newEnrollment: CourseEnrollment = {
+      id: `enr-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      courseId: studentData.courseId,
+      courseTitle: studentData.courseTitle,
+      enrolledAt: dateStr,
+      tuitionTotal: studentData.tuitionTotal,
+      tuitionPaid: studentData.tuitionPaid,
+      paymentStatus: studentData.paymentStatus || (studentData.tuitionPaid >= studentData.tuitionTotal ? 'paid' : studentData.tuitionPaid > 0 ? 'partial' : 'pending'),
+      certificateIssued: studentData.certificateIssued || false,
+      status: studentData.status || 'active',
+      notes: studentData.notes,
+    };
+
+    if (existingIndex >= 0) {
+      // Append enrollment to existing student
+      const existing = students[existingIndex];
+      const updatedEnrollments = [...(existing.enrollments || []), newEnrollment];
+      const updatedStudent: Student = {
+        ...existing,
+        fullName: studentData.fullName.trim() || existing.fullName,
+        nationalCode: studentData.nationalCode?.trim() || existing.nationalCode,
+        email: studentData.email?.trim() || existing.email,
+        enrollments: updatedEnrollments,
+      };
+      setStudents((prev) => prev.map((s, idx) => (idx === existingIndex ? updatedStudent : s)));
+      showToast(`دوره «${studentData.courseTitle}» به سوابق هنرجو «${existing.fullName}» اضافه شد.`);
+    } else {
+      // Create new student
+      const newStudent: Student = {
+        id: `std-${Date.now()}`,
+        fullName: studentData.fullName.trim(),
+        nationalCode: studentData.nationalCode?.trim() || '---',
+        phone: cleanPhone,
+        email: studentData.email?.trim(),
+        enrollments: [newEnrollment],
+        createdAt: dateStr,
+        notes: studentData.notes,
+        // Legacy fields for direct display
+        courseId: studentData.courseId,
+        courseTitle: studentData.courseTitle,
+        registrationDate: dateStr,
+        paymentStatus: newEnrollment.paymentStatus,
+        tuitionTotal: studentData.tuitionTotal,
+        tuitionPaid: studentData.tuitionPaid,
+        certificateIssued: newEnrollment.certificateIssued,
+        status: newEnrollment.status,
+      };
+      setStudents((prev) => [newStudent, ...prev]);
+      showToast(`هنرجوی جدید «${newStudent.fullName}» با موفقیت ثبت نام شد.`);
+    }
+
+    // Increment enrolledCount in corresponding course
     setCourses((prev) =>
       prev.map((c) => {
-        if (c.id === newStudent.courseId) {
+        if (c.id === studentData.courseId) {
           const newEnrolled = (c.enrolledCount || 0) + 1;
           return {
             ...c,
@@ -229,19 +350,106 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return c;
       })
     );
-    showToast(`هنرجو «${newStudent.fullName}» در دوره ثبت نام شد.`);
+  };
+
+  const enrollStudentInCourse = (
+    studentId: string,
+    enrollmentData: {
+      courseId: string;
+      courseTitle: string;
+      tuitionTotal: number;
+      tuitionPaid: number;
+      paymentStatus?: PaymentStatus;
+      notes?: string;
+    }
+  ) => {
+    const dateStr = new Date().toLocaleDateString('fa-IR');
+    const newEnrollment: CourseEnrollment = {
+      id: `enr-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      courseId: enrollmentData.courseId,
+      courseTitle: enrollmentData.courseTitle,
+      enrolledAt: dateStr,
+      tuitionTotal: enrollmentData.tuitionTotal,
+      tuitionPaid: enrollmentData.tuitionPaid,
+      paymentStatus: enrollmentData.paymentStatus || (enrollmentData.tuitionPaid >= enrollmentData.tuitionTotal ? 'paid' : enrollmentData.tuitionPaid > 0 ? 'partial' : 'pending'),
+      certificateIssued: false,
+      status: 'active',
+      notes: enrollmentData.notes,
+    };
+
+    setStudents((prev) =>
+      prev.map((s) => {
+        if (s.id === studentId) {
+          const currentList = s.enrollments || [];
+          return {
+            ...s,
+            enrollments: [...currentList, newEnrollment],
+          };
+        }
+        return s;
+      })
+    );
+
+    // Update course count
+    setCourses((prev) =>
+      prev.map((c) => {
+        if (c.id === enrollmentData.courseId) {
+          const newEnrolled = (c.enrolledCount || 0) + 1;
+          return {
+            ...c,
+            enrolledCount: newEnrolled,
+            status: newEnrolled >= c.capacity ? 'full' : c.status,
+          };
+        }
+        return c;
+      })
+    );
+
+    showToast(`دوره جدید با موفقیت به سوابق هنرجو افزوده شد.`);
+  };
+
+  const updateStudentEnrollment = (
+    studentId: string,
+    enrollmentId: string,
+    updatedFields: Partial<CourseEnrollment>
+  ) => {
+    setStudents((prev) =>
+      prev.map((s) => {
+        if (s.id === studentId) {
+          const updated = (s.enrollments || []).map((enr) =>
+            enr.id === enrollmentId ? { ...enr, ...updatedFields } : enr
+          );
+          return { ...s, enrollments: updated };
+        }
+        return s;
+      })
+    );
+    showToast('وضعیت دوره هنرجو به‌روزرسانی شد.');
+  };
+
+  const deleteStudentEnrollment = (studentId: string, enrollmentId: string) => {
+    setStudents((prev) =>
+      prev.map((s) => {
+        if (s.id === studentId) {
+          const filtered = (s.enrollments || []).filter((enr) => enr.id !== enrollmentId);
+          return { ...s, enrollments: filtered };
+        }
+        return s;
+      })
+    );
+    showToast('دوره از سوابق هنرجو حذف شد.', 'info');
   };
 
   const updateStudent = (id: string, updatedFields: Partial<Student>) => {
     setStudents((prev) =>
       prev.map((s) => (s.id === id ? { ...s, ...updatedFields } : s))
     );
-    showToast('اطلاعات هنرجو ویرایش گردید.');
+    showToast('اطلاعات پرونده هنرجو ویرایش گردید.');
   };
 
   const deleteStudent = (id: string) => {
     setStudents((prev) => prev.filter((s) => s.id !== id));
-    showToast('هنرجو از سامانه حذف شد.', 'info');
+    showToast('پرونده هنرجو از سامانه حذف شد.', 'info');
   };
 
   // Product handlers
@@ -375,12 +583,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // System actions
   const resetAllData = () => {
+    setSiteSettings(INITIAL_SITE_SETTINGS);
     setCourses(INITIAL_COURSES);
     setStudents(INITIAL_STUDENTS);
     setProducts(INITIAL_PRODUCTS);
     setOrders(INITIAL_ORDERS);
     setFaqs(INITIAL_FAQS);
     setCart([]);
+    localStorage.removeItem(STORAGE_KEYS.SITE_SETTINGS);
     localStorage.removeItem(STORAGE_KEYS.COURSES);
     localStorage.removeItem(STORAGE_KEYS.STUDENTS);
     localStorage.removeItem(STORAGE_KEYS.PRODUCTS);
@@ -392,6 +602,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const exportDataJson = () => {
     const data = {
+      siteSettings,
       courses,
       students,
       products,
@@ -412,6 +623,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const importDataJson = (jsonString: string): boolean => {
     try {
       const parsed = JSON.parse(jsonString);
+      if (parsed.siteSettings) setSiteSettings(parsed.siteSettings);
       if (parsed.courses) setCourses(parsed.courses);
       if (parsed.students) setStudents(parsed.students);
       if (parsed.products) setProducts(parsed.products);
@@ -438,6 +650,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedProductForOrder,
         isCartDrawerOpen,
         setIsCartDrawerOpen,
+        siteSettings,
+        updateSiteSettings,
         courses,
         students,
         products,
@@ -451,6 +665,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addStudent,
         updateStudent,
         deleteStudent,
+        enrollStudentInCourse,
+        updateStudentEnrollment,
+        deleteStudentEnrollment,
         addProduct,
         updateProduct,
         deleteProduct,

@@ -6,6 +6,7 @@ import { ProductsManager } from './ProductsManager';
 import { OrdersManager } from './OrdersManager';
 import { FaqManager } from './FaqManager';
 import { SettingsManager } from './SettingsManager';
+import { SiteSettingsManager } from './SiteSettingsManager';
 import {
   LayoutDashboard,
   Users,
@@ -21,7 +22,8 @@ import {
   Package,
   Calendar,
   Menu,
-  X
+  X,
+  Globe
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -39,14 +41,25 @@ export const AdminDashboard: React.FC = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Overview metrics
-  const totalTuition = students.reduce((sum, s) => sum + s.tuitionTotal, 0);
-  const totalPaid = students.reduce((sum, s) => sum + s.tuitionPaid, 0);
+  const totalTuition = students.reduce((sum, s) => {
+    if (s.enrollments && s.enrollments.length > 0) {
+      return sum + s.enrollments.reduce((eSum, e) => eSum + (e.tuitionTotal || 0), 0);
+    }
+    return sum + (s.tuitionTotal || 0);
+  }, 0);
+
+  const totalPaid = students.reduce((sum, s) => {
+    if (s.enrollments && s.enrollments.length > 0) {
+      return sum + s.enrollments.reduce((eSum, e) => eSum + (e.tuitionPaid || 0), 0);
+    }
+    return sum + (s.tuitionPaid || 0);
+  }, 0);
   const totalOrdersAmount = orders.reduce((sum, o) => sum + o.totalAmount, 0);
   const pendingOrdersCount = orders.filter((o) => o.status === 'pending').length;
   const activeCoursesCount = courses.filter((c) => c.status === 'registering').length;
 
   interface NavItem {
-    id: 'overview' | 'students' | 'courses' | 'products' | 'orders' | 'faqs' | 'settings';
+    id: 'overview' | 'students' | 'courses' | 'products' | 'orders' | 'faqs' | 'site_settings' | 'settings';
     label: string;
     icon: React.ComponentType<{ className?: string }>;
     badge?: string | number;
@@ -60,6 +73,7 @@ export const AdminDashboard: React.FC = () => {
     { id: 'products', label: 'منوی کیک و شیرینی', icon: Cake, badge: products.length },
     { id: 'orders', label: 'سفارشات مشتریان', icon: ShoppingBag, badge: pendingOrdersCount ? `${pendingOrdersCount} جدید` : undefined, badgeColor: 'bg-rose-500 text-white' },
     { id: 'faqs', label: 'پرسش و پاسخ‌ها (FAQ)', icon: HelpCircle, badge: faqs.length },
+    { id: 'site_settings', label: 'تنظیمات عمومی سایت', icon: Globe },
     { id: 'settings', label: 'پشتیبان‌گیری و دیتابیس', icon: Settings },
   ];
 
@@ -371,6 +385,7 @@ export const AdminDashboard: React.FC = () => {
             {activeAdminTab === 'products' && <ProductsManager />}
             {activeAdminTab === 'orders' && <OrdersManager />}
             {activeAdminTab === 'faqs' && <FaqManager />}
+            {activeAdminTab === 'site_settings' && <SiteSettingsManager />}
             {activeAdminTab === 'settings' && <SettingsManager />}
 
           </main>

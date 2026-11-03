@@ -1,4 +1,4 @@
-import { Course, Student, Product, Order, FAQItem } from '../types';
+import { Course, Student, Product, Order, FAQItem, SiteSettings } from '../types';
 
 export const INITIAL_COURSES: Course[] = [
   {
@@ -330,21 +330,65 @@ export const INITIAL_STUDENTS: Student[] = [
     nationalCode: '۰۰۱۲۳۴۵۶۷۸',
     phone: '۰۹۱۲۱۱۱۴۳۲۱',
     email: 'sara.mirzayi@gmail.com',
+    createdAt: '۱۴۰۳/۰۸/۲۰',
+    notes: 'پروژه پایانی کیک نامزدی دو طبقه تحویل و تایید شد. علاقه‌مند به کارگاه‌های تکمیلی.',
+    enrollments: [
+      {
+        id: 'enr-101-1',
+        courseId: 'course-1',
+        courseTitle: 'دوره جامع مسترکلاس کیک‌سازی مدرن و فوندانت',
+        enrolledAt: '۱۴۰۳/۰۸/۲۲',
+        tuitionTotal: 12800000,
+        tuitionPaid: 12800000,
+        paymentStatus: 'paid',
+        certificateIssued: true,
+        status: 'active',
+        notes: 'نمره عملی دوره کیک: ۹۸ از ۱۰۰',
+      },
+      {
+        id: 'enr-101-2',
+        courseId: 'course-2',
+        courseTitle: 'مسترکلاس دسرهای بوتیکی و فرانسوی (Entremets & Tarts)',
+        enrolledAt: '۱۴۰۳/۰۹/۰۱',
+        tuitionTotal: 9900000,
+        tuitionPaid: 5000000,
+        paymentStatus: 'partial',
+        certificateIssued: false,
+        status: 'active',
+        notes: 'قسط اول پرداخت شد.',
+      }
+    ],
+    // legacy helpers
     courseId: 'course-1',
     courseTitle: 'دوره جامع مسترکلاس کیک‌سازی مدرن و فوندانت',
     registrationDate: '۱۴۰۳/۰۸/۲۲',
-    paymentStatus: 'paid',
-    tuitionTotal: 12800000,
-    tuitionPaid: 12800000,
+    paymentStatus: 'partial',
+    tuitionTotal: 22700000,
+    tuitionPaid: 17800000,
     certificateIssued: true,
     status: 'active',
-    notes: 'پروژه پایانی کیک نامزدی دو طبقه تحویل و تایید شد.'
   },
   {
     id: 'std-102',
     fullName: 'امیرحسین رضایی',
     nationalCode: '۰۰۸۷۶۵۴۳۲۱',
     phone: '۰۹۳۵۲۲۲۷۸۹۰',
+    createdAt: '۱۴۰۳/۰۸/۲۵',
+    notes: 'قسط دوم شهریه قبل از جلسه چهارم تسویه خواهد شد.',
+    enrollments: [
+      {
+        id: 'enr-102-1',
+        courseId: 'course-2',
+        courseTitle: 'مسترکلاس دسرهای بوتیکی و فرانسوی (Entremets & Tarts)',
+        enrolledAt: '۱۴۰۳/۰۸/۲۵',
+        tuitionTotal: 9900000,
+        tuitionPaid: 5000000,
+        paymentStatus: 'partial',
+        certificateIssued: false,
+        status: 'active',
+        notes: 'رسپی‌های تارت را تمرین کرده است.',
+      }
+    ],
     courseId: 'course-2',
     courseTitle: 'مسترکلاس دسرهای بوتیکی و فرانسوی',
     registrationDate: '۱۴۰۳/۰۸/۲۵',
@@ -353,7 +397,6 @@ export const INITIAL_STUDENTS: Student[] = [
     tuitionPaid: 5000000,
     certificateIssued: false,
     status: 'active',
-    notes: 'قسط دوم شهریه قبل از جلسه چهارم تسویه خواهد شد.'
   },
   {
     id: 'std-103',
@@ -361,6 +404,21 @@ export const INITIAL_STUDENTS: Student[] = [
     nationalCode: '۰۳۷۱۱۲۲۳۳۴',
     phone: '۰۹۱۸۴۴۴۱۱۲۲',
     email: 'm.ahmadi@yahoo.com',
+    createdAt: '۱۴۰۳/۰۸/۲۸',
+    notes: 'علاقه‌مند به راه‌اندازی کارگاه خانگی کیک در مشهد.',
+    enrollments: [
+      {
+        id: 'enr-103-1',
+        courseId: 'course-1',
+        courseTitle: 'دوره جامع مسترکلاس کیک‌سازی مدرن و فوندانت',
+        enrolledAt: '۱۴۰۳/۰۸/۲۸',
+        tuitionTotal: 12800000,
+        tuitionPaid: 12800000,
+        paymentStatus: 'paid',
+        certificateIssued: false,
+        status: 'active',
+      }
+    ],
     courseId: 'course-1',
     courseTitle: 'دوره جامع مسترکلاس کیک‌سازی مدرن و فوندانت',
     registrationDate: '۱۴۰۳/۰۸/۲۸',
@@ -369,13 +427,27 @@ export const INITIAL_STUDENTS: Student[] = [
     tuitionPaid: 12800000,
     certificateIssued: false,
     status: 'active',
-    notes: 'علاقه‌مند به راه‌اندازی کارگاه خانگی کیک در مشهد.'
   },
   {
     id: 'std-104',
     fullName: 'نیلوفر خسروی',
     nationalCode: '۰۴۵۶۶۷۷۸۸۹',
     phone: '۰۹۱۲۷۷۷۳۳۴۴',
+    createdAt: '۱۴۰۳/۰۹/۰۱',
+    notes: 'بیعانه رزرو پرداخت شده است.',
+    enrollments: [
+      {
+        id: 'enr-104-1',
+        courseId: 'course-3',
+        courseTitle: 'دوره تخصصی شیرینی‌های سنتی اعلا و مدرن شب عید',
+        enrolledAt: '۱۴۰۳/۰۹/۰۱',
+        tuitionTotal: 7200000,
+        tuitionPaid: 1000000,
+        paymentStatus: 'pending',
+        certificateIssued: false,
+        status: 'reserved',
+      }
+    ],
     courseId: 'course-3',
     courseTitle: 'دوره تخصصی شیرینی‌های سنتی اعلا و مدرن',
     registrationDate: '۱۴۰۳/۰۹/۰۱',
@@ -384,13 +456,27 @@ export const INITIAL_STUDENTS: Student[] = [
     tuitionPaid: 1000000,
     certificateIssued: false,
     status: 'reserved',
-    notes: 'بیعانه رزرو پرداخت شده است.'
   },
   {
     id: 'std-105',
     fullName: 'فرشاد علیزاده',
     nationalCode: '۰۰۵۹۹۸۸۷۷۶',
     phone: '۰۹۱۹۳۳۳۵۵۶۶',
+    createdAt: '۱۴۰۳/۰۹/۰۳',
+    notes: 'نانوای کافه بیکری ژوان.',
+    enrollments: [
+      {
+        id: 'enr-105-1',
+        courseId: 'course-4',
+        courseTitle: 'ورکشاپ یک‌روزه نان‌های آرتیزان و خمیر ترش (Sourdough Masterclass)',
+        enrolledAt: '۱۴۰۳/۰۹/۰۳',
+        tuitionTotal: 4900000,
+        tuitionPaid: 4900000,
+        paymentStatus: 'paid',
+        certificateIssued: true,
+        status: 'graduated',
+      }
+    ],
     courseId: 'course-4',
     courseTitle: 'ورکشاپ یک‌روزه نان‌های آرتیزان و خمیر ترش',
     registrationDate: '۱۴۰۳/۰۹/۰۳',
@@ -399,7 +485,6 @@ export const INITIAL_STUDENTS: Student[] = [
     tuitionPaid: 4900000,
     certificateIssued: true,
     status: 'graduated',
-    notes: 'نانوای کافه بیکری ژوان.'
   }
 ];
 
@@ -458,6 +543,28 @@ export const INITIAL_ORDERS: Order[] = [
         totalPrice: 540000
       }
     ]
+  },
+  {
+    id: 'ord-803',
+    orderNumber: 'FND-8493',
+    customerName: 'سارا میرزایی',
+    customerPhone: '۰۹۱۲۱۱۱۴۳۲۱',
+    deliveryDate: '۱۴۰۳/۰۹/۱۰',
+    deliveryAddress: 'تهران، شهرک غرب، بلوار پاک‌نژاد، کوچه مروارید، پلاک ۵',
+    totalAmount: 720000,
+    status: 'delivered',
+    createdAt: '۱۴۰۳/۰۸/۲۹',
+    notes: 'سفارش ثبت شده توسط هنرجوی دوره کیک برای تست طعم دسرهای فرانسوی آموزشگاه',
+    items: [
+      {
+        id: 'ci-4',
+        productId: 'prod-dessert-1',
+        product: INITIAL_PRODUCTS[5],
+        quantity: 1,
+        unitPrice: 720000,
+        totalPrice: 720000
+      }
+    ]
   }
 ];
 
@@ -505,3 +612,92 @@ export const INITIAL_FAQS: FAQItem[] = [
     order: 6
   }
 ];
+
+export const INITIAL_SITE_SETTINGS: SiteSettings = {
+  // Brand & Header
+  brandName: 'آموزشگاه فندق',
+  brandSubtitle: 'آکادمی تخصصی قنادی و پتیسری',
+  logoImageUrl: '',
+
+  // Hero section
+  heroBadge: 'آکادمی بین‌المللی و آتلیه قنادی فندق',
+  heroHeadline: 'هنر شیرینی‌پزی، دکور کیک و دسرهای مدرن را با استاندارد جهانی بیاموزید.',
+  heroDescription: 'آموزشگاه فندق محیطی حرفه‌ای برای علاقه‌مندان و کارآفرینان است؛ از کارگاه‌های ۱۰۰٪ عملی با مواد اولیه نامحدود و مدارک بین‌المللی تا آتلیه سفارش انواع کیک‌های لوکس مراسمات، تولد و دسرهای فرانسوی.',
+  heroImageUrl: '/src/assets/images/hero_culinary_pastry_1793696672801.jpg',
+
+  // Key Statistics
+  statGraduatesCount: '+۲,۴۰۰',
+  statGraduatesTitle: 'هنرجوی فارغ‌التحصیل',
+  statGraduatesDesc: 'راه‌اندازی بیش از ۳۵۰ کسب‌وکار خانگی و قنادی',
+
+  statCertificateTitle: '۱۰۰٪ معتبر',
+  statCertificateSub: 'مدرک بین‌المللی سازمان فنی‌وحرفه‌ای',
+  statCertificateDesc: 'دارای کد ILO قابل ترجمه و مهاجرت کاری',
+
+  statPracticalTitle: '۱۰۰٪ عملی',
+  statPracticalSub: 'کارگاه کاملاً کارگاهی (Hands-on)',
+  statPracticalDesc: 'تامین کلیه مواد اولیه توسط آموزشگاه',
+
+  statSupportTitle: '۶ ماه',
+  statSupportSub: 'پشتیبانی و رفع اشکال رایگان',
+  statSupportDesc: 'ارتباط مستقیم با مدرس حتی بعد از پایان دوره',
+
+  // Contact & Location
+  phone: '۰۲۱-۸۸۸۸۰۰۰۰',
+  mobile: '۰۹۱۲۳۴۵۶۷۸۹',
+  address: 'تهران، خیابان ولیعصر، بالاتر از میدان ونک، کوچه شهید فلاحی، پلاک ۱۸، ساختمان آکادمی فندق',
+  workingHours: 'شنبه تا پنج‌شنبه: ۹:۰۰ الی ۱۹:۰۰',
+  licenseNumber: 'مجوز رسمی شماره ۹۸/۲۴۰۱ سازمان آموزش فنی و حرفه‌ای',
+  footerBio: 'مرکز تخصصی آموزش هنر شیرینی‌پزی، دکور کیک‌های مدرن، دسرهای فرانسوی و نان‌های حجیم زیر نظر سازمان آموزش فنی‌وحرفه‌ای کشور.',
+
+  // Social & Online (Dynamic)
+  instagramHandle: 'fandoq_pastry_academy',
+  instagramUrl: 'https://instagram.com/fandoq_pastry_academy',
+  whatsappNumber: '09123456789',
+  socialLinks: [
+    {
+      id: 'soc-1',
+      platform: 'instagram',
+      title: 'صفحه رسمی اینستاگرام فندق',
+      url: 'https://instagram.com/fandoq_pastry_academy',
+      handle: '@fandoq_pastry_academy',
+      isActive: true,
+    },
+    {
+      id: 'soc-2',
+      platform: 'telegram',
+      title: 'کانال تلگرام دوره‌ها و رسپی‌ها',
+      url: 'https://t.me/fandoq_academy',
+      handle: '@fandoq_academy',
+      isActive: true,
+    },
+    {
+      id: 'soc-3',
+      platform: 'eitaa',
+      title: 'کانال رسمی آموزشگاه در ایتا',
+      url: 'https://eitaa.com/fandoq_pastry',
+      handle: '@fandoq_pastry',
+      isActive: true,
+    },
+    {
+      id: 'soc-4',
+      platform: 'whatsapp',
+      title: 'واتساپ مشاوره ثبت‌نام و سفارش کیک',
+      url: 'https://wa.me/989123456789',
+      handle: '۰۹۱۲۳۴۵۶۷۸۹',
+      isActive: true,
+    },
+    {
+      id: 'soc-5',
+      platform: 'aparat',
+      title: 'کانال ویدیوهای آموزشی آپارات',
+      url: 'https://aparat.com/fandoq_academy',
+      handle: 'fandoq_academy',
+      isActive: true,
+    }
+  ],
+
+  // Studio Custom Cake Notice
+  ordersNoticeTitle: 'طرح خاصی در اینستاگرام یا پینترست دیده‌اید؟',
+  ordersNoticeText: 'تیم دکوراتوری آموزشگاه فندق با تجربه اجرای بیش از ۱,۲۰۰ کیک مجلل عروسی و تولد، توانایی مدل‌سازی و پیاده‌سازی هر طرح و استراکچر خاصی را داراست.',
+};

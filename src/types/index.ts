@@ -31,21 +31,38 @@ export interface Course {
 export type PaymentStatus = 'paid' | 'partial' | 'pending';
 export type StudentStatus = 'active' | 'graduated' | 'reserved';
 
+export interface CourseEnrollment {
+  id: string;
+  courseId: string;
+  courseTitle: string;
+  enrolledAt: string;
+  tuitionTotal: number;
+  tuitionPaid: number;
+  paymentStatus: PaymentStatus;
+  certificateIssued: boolean;
+  status: StudentStatus;
+  notes?: string;
+}
+
 export interface Student {
   id: string;
   fullName: string;
   nationalCode: string;
   phone: string;
   email?: string;
-  courseId: string;
-  courseTitle: string;
-  registrationDate: string;
-  paymentStatus: PaymentStatus;
-  tuitionTotal: number;
-  tuitionPaid: number;
-  certificateIssued: boolean;
-  status: StudentStatus;
+  enrollments: CourseEnrollment[];
+  createdAt: string;
   notes?: string;
+
+  // Legacy convenience fields for backwards compatibility
+  courseId?: string;
+  courseTitle?: string;
+  registrationDate?: string;
+  paymentStatus?: PaymentStatus;
+  tuitionTotal?: number;
+  tuitionPaid?: number;
+  certificateIssued?: boolean;
+  status?: StudentStatus;
 }
 
 export type ProductCategoryType = 'cakes' | 'desserts' | 'dry_pastries' | 'finger_foods';
@@ -101,4 +118,72 @@ export interface FAQItem {
   answer: string;
   category: 'courses' | 'orders' | 'certificates' | 'payments';
   order: number;
+}
+
+export interface SiteSettings {
+  // Brand & Header
+  brandName: string;
+  brandSubtitle: string;
+  logoImageUrl?: string;
+  
+  // Hero section
+  heroBadge: string;
+  heroHeadline: string;
+  heroDescription: string;
+  heroImageUrl: string;
+  
+  // Key Statistics
+  statGraduatesCount: string;
+  statGraduatesTitle: string;
+  statGraduatesDesc: string;
+  statCertificateTitle: string;
+  statCertificateSub: string;
+  statCertificateDesc: string;
+  statPracticalTitle: string;
+  statPracticalSub: string;
+  statPracticalDesc: string;
+  statSupportTitle: string;
+  statSupportSub: string;
+  statSupportDesc: string;
+  
+  // Contact & Location
+  phone: string;
+  mobile: string;
+  address: string;
+  workingHours: string;
+  licenseNumber: string;
+  footerBio: string;
+  
+  // Social & Online (Dynamic)
+  instagramHandle: string;
+  instagramUrl: string;
+  whatsappNumber: string;
+  socialLinks: SocialLink[];
+  
+  // Studio Custom Cake Notice
+  ordersNoticeTitle: string;
+  ordersNoticeText: string;
+}
+
+export type SocialPlatform =
+  | 'instagram'
+  | 'telegram'
+  | 'whatsapp'
+  | 'eitaa'
+  | 'bale'
+  | 'rubika'
+  | 'youtube'
+  | 'aparat'
+  | 'linkedin'
+  | 'pinterest'
+  | 'website'
+  | 'other';
+
+export interface SocialLink {
+  id: string;
+  platform: SocialPlatform;
+  title: string;
+  url: string;
+  handle?: string;
+  isActive: boolean;
 }

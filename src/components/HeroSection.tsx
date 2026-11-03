@@ -1,7 +1,10 @@
 import React from 'react';
-import { Award, BookOpen, Clock, Users, ArrowDown, ChevronLeft } from 'lucide-react';
+import { Award, BookOpen, Clock, Users, ChevronLeft } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 
 export const HeroSection: React.FC = () => {
+  const { siteSettings } = useApp();
+
   return (
     <section className="relative overflow-hidden pt-8 pb-16 lg:pt-14 lg:pb-24 border-b border-stone-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -13,19 +16,19 @@ export const HeroSection: React.FC = () => {
             
             {/* Trust Kicker - Zero-pill clean text */}
             <div className="flex items-center gap-2 text-xs font-semibold text-amber-900 tracking-wide mb-4">
-              <span>آکادمی بین‌المللی و آتلیه قنادی فندق</span>
+              <span>{siteSettings.heroBadge}</span>
               <span aria-hidden="true">·</span>
-              <span className="text-stone-500 font-normal">دارای مجوز رسمی سازمان فنی و حرفه‌ای کشور</span>
+              <span className="text-stone-500 font-normal">{siteSettings.licenseNumber}</span>
             </div>
 
             {/* Headline */}
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-stone-900 leading-[1.3] tracking-tight max-w-2xl text-balance">
-              هنر شیرینی‌پزی، دکور کیک و دسرهای مدرن را با استاندارد جهانی بیاموزید.
+              {siteSettings.heroHeadline}
             </h1>
 
             {/* Subtitle */}
             <p className="mt-5 text-base sm:text-lg text-stone-600 leading-relaxed max-w-xl">
-              آموزشگاه فندق محیطی حرفه‌ای برای علاقه‌مندان و کارآفرینان است؛ از کارگاه‌های ۱۰۰٪ عملی با مواد اولیه نامحدود و مدارک بین‌المللی تا آتلیه سفارش انواع کیک‌های لوکس مراسمات، تولد و دسرهای فرانسوی.
+              {siteSettings.heroDescription}
             </p>
 
             {/* Primary Action Buttons */}
@@ -68,14 +71,17 @@ export const HeroSection: React.FC = () => {
           <div className="lg:col-span-5">
             <div className="relative rounded-2xl overflow-hidden shadow-xl border border-stone-200/90 bg-stone-100">
               <img
-                src="/src/assets/images/hero_culinary_pastry_1793696672801.jpg"
-                alt="کارگاه عملی آموزشگاه شیرینی و آشپزی فندق"
+                src={siteSettings.heroImageUrl}
+                alt={siteSettings.brandName}
                 className="w-full h-[420px] sm:h-[480px] object-cover"
                 referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/src/assets/images/hero_culinary_pastry_1793696672801.jpg';
+                }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-transparent flex flex-col justify-end p-6 text-white">
                 <div className="text-xs font-semibold text-amber-300 mb-1">
-                  کارگاه اختصاصی فندق
+                  کارگاه اختصاصی {siteSettings.brandName}
                 </div>
                 <div className="text-sm font-medium leading-snug">
                   محیط واقعی شیرینی‌پزی صنعتی با متریال اورجینال و مربیان دارای رتبه کشوری
@@ -92,37 +98,37 @@ export const HeroSection: React.FC = () => {
           <div className="flex flex-col">
             <div className="flex items-center gap-2 text-amber-800 mb-2">
               <Users className="w-5 h-5 text-amber-800" />
-              <span className="text-2xl font-black tabular-nums text-stone-900">+۲,۴۰۰</span>
+              <span className="text-2xl font-black tabular-nums text-stone-900">{siteSettings.statGraduatesCount}</span>
             </div>
-            <span className="text-xs font-bold text-stone-800">هنرجوی فارغ‌التحصیل</span>
-            <span className="text-[11px] text-stone-500 mt-0.5">راه‌اندازی بیش از ۳۵۰ کسب‌وکار خانگی و قنادی</span>
+            <span className="text-xs font-bold text-stone-800">{siteSettings.statGraduatesTitle}</span>
+            <span className="text-[11px] text-stone-500 mt-0.5">{siteSettings.statGraduatesDesc}</span>
           </div>
 
           <div className="flex flex-col">
             <div className="flex items-center gap-2 text-amber-800 mb-2">
               <Award className="w-5 h-5 text-amber-800" />
-              <span className="text-2xl font-black text-stone-900">۱۰۰٪ معتبر</span>
+              <span className="text-2xl font-black text-stone-900">{siteSettings.statCertificateTitle}</span>
             </div>
-            <span className="text-xs font-bold text-stone-800">مدرک بین‌المللی سازمان فنی‌وحرفه‌ای</span>
-            <span className="text-[11px] text-stone-500 mt-0.5">دارای کد ILO قابل ترجمه و مهاجرت کاری</span>
+            <span className="text-xs font-bold text-stone-800">{siteSettings.statCertificateSub}</span>
+            <span className="text-[11px] text-stone-500 mt-0.5">{siteSettings.statCertificateDesc}</span>
           </div>
 
           <div className="flex flex-col">
             <div className="flex items-center gap-2 text-amber-800 mb-2">
               <BookOpen className="w-5 h-5 text-amber-800" />
-              <span className="text-2xl font-black tabular-nums text-stone-900">۱۰۰٪</span>
+              <span className="text-2xl font-black tabular-nums text-stone-900">{siteSettings.statPracticalTitle}</span>
             </div>
-            <span className="text-xs font-bold text-stone-800">کارگاه کاملاً عملی (Hands-on)</span>
-            <span className="text-[11px] text-stone-500 mt-0.5">تامین کلیه مواد اولیه توسط آموزشگاه</span>
+            <span className="text-xs font-bold text-stone-800">{siteSettings.statPracticalSub}</span>
+            <span className="text-[11px] text-stone-500 mt-0.5">{siteSettings.statPracticalDesc}</span>
           </div>
 
           <div className="flex flex-col">
             <div className="flex items-center gap-2 text-amber-800 mb-2">
               <Clock className="w-5 h-5 text-amber-800" />
-              <span className="text-2xl font-black text-stone-900">۶ ماه</span>
+              <span className="text-2xl font-black text-stone-900">{siteSettings.statSupportTitle}</span>
             </div>
-            <span className="text-xs font-bold text-stone-800">پشتیبانی و رفع اشکال رایگان</span>
-            <span className="text-[11px] text-stone-500 mt-0.5">ارتباط مستقیم با مدرس حتی بعد از پایان دوره</span>
+            <span className="text-xs font-bold text-stone-800">{siteSettings.statSupportSub}</span>
+            <span className="text-[11px] text-stone-500 mt-0.5">{siteSettings.statSupportDesc}</span>
           </div>
 
         </div>
