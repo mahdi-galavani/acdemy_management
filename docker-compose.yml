@@ -1,0 +1,76 @@
+version: '3.8'
+
+# ==============================================================================
+# Docker Compose for Fandoq Academy (Full-Stack + PostgreSQL 16)
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. PostgreSQL Database Service
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: fandoq_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fandoq_db}
+      POSTGRES_USER: ${POSTGRES_USER:-fandoq_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fandoq_secure_pass_2025}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - fandoq_pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - fandoq_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fandoq_user} -d ${POSTGRES_DB:-fandoq_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ----------------------------------------------------------------------------
+  # 2. Application Service (Express + React Frontend Unified)
+  # ----------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fandoq_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-fandoq_db}
+      POSTGRES_USER: ${POSTGRES_USER:-fandoq_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fandoq_secure_pass_2025}
+      JWT_SECRET: ${JWT_SECRET:-fandoq_super_secure_production_jwt_secret_key_random_string_2025}
+      ADMIN_DEFAULT_USERNAME: ${ADMIN_DEFAULT_USERNAME:-admin}
+      ADMIN_DEFAULT_PASSWORD: ${ADMIN_DEFAULT_PASSWORD:-fandoq@2025}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fandoq_network
+
+# ------------------------------------------------------------------------------
+# Persistent Volumes
+# ------------------------------------------------------------------------------
+volumes:
+  fandoq_pgdata:
+    name: fandoq_pgdata
+    driver: local
+
+# ------------------------------------------------------------------------------
+# Isolated Bridge Network
+# ------------------------------------------------------------------------------
+networks:
+  fandoq_network:
+    name: fandoq_network
+    driver: bridge
