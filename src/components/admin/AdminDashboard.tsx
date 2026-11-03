@@ -23,8 +23,14 @@ import {
   Calendar,
   Menu,
   X,
-  Globe
+  Globe,
+  LogOut,
+  Database,
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
+import { authStorage, checkServerHealth } from '../../services/apiClient';
+import { AdminLoginModal } from './AdminLoginModal';
 
 export const AdminDashboard: React.FC = () => {
   const {
@@ -39,8 +45,27 @@ export const AdminDashboard: React.FC = () => {
   } = useApp();
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => authStorage.isAuthenticated());
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [dbStatus, setDbStatus] = useState<{ connected: boolean; type: string } | null>(null);
 
-  // Overview metrics
+  React.useEffect(() => {
+    // Check backend health on mount
+    checkServerHealth().then((res) => {
+      if (res.success && res.data?.database) {
+        setDbStatus({
+          connected: res.data.database.connected,
+          type: res.data.database.type,
+        });
+      }
+    });
+  }, []);
+
+  const handleLogout = () => {
+    authStorage.clearToken();
+    setIsAuthenticated(false);
+    setCurrentView('landing');
+  };
   const totalTuition = students.reduce((sum, s) => {
     if (s.enrollments && s.enrollments.length > 0) {
       return sum + s.enrollments.reduce((eSum, e) => eSum + (e.tuitionTotal || 0), 0);
@@ -161,14 +186,42 @@ export const AdminDashboard: React.FC = () => {
                 })}
               </nav>
 
-              {/* Client View Shortcut */}
-              <div className="pt-3 border-t border-stone-100">
+              {/* Database Status & Logout Section */}
+              <div className="pt-3 border-t border-stone-100 space-y-2">
+                {/* DB Health Pill */}
+                <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 text-[11px] flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Database className="w-3.5 h-3.5 text-stone-500" />
+                    <span className="text-stone-600 font-medium">پایگاه داده:</span>
+                  </div>
+                  <span
+                    className={`font-bold flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] ${
+                      dbStatus?.connected
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${dbStatus?.connected ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                    {dbStatus?.connected ? 'PostgreSQL متصل' : 'حالت لوکال / فال‌بک'}
+                  </span>
+                </div>
+
+                {/* Back to Client Site */}
                 <button
                   onClick={() => setCurrentView('landing')}
-                  className="w-full py-2.5 px-3 text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 rounded-xl transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-2 px-3 text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 rounded-xl transition-colors flex items-center justify-center gap-2"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>مشاهده سایت اصلی</span>
+                </button>
+
+                {/* Logout Button */}
+                <button
+                  onClick={handleLogout}
+                  className="w-full py-2 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 rounded-xl transition-colors flex items-center justify-center gap-2"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>خروج از پنل مدیریت (JWT)</span>
                 </button>
               </div>
 
@@ -392,6 +445,19 @@ export const AdminDashboard: React.FC = () => {
 
         </div>
       </div>
+
+      {/* Admin JWT Login Modal */}
+      <AdminLoginModal
+        isOpen={isLoginModalOpen || !isAuthenticated}
+        onClose={() => {
+          setIsLoginModalOpen(false);
+          if (!isAuthenticated) setCurrentView('landing');
+        }}
+        onSuccess={() => {
+          setIsAuthenticated(true);
+          setIsLoginModalOpen(false);
+        }}
+      />
 
     </div>
   );

@@ -100,15 +100,50 @@ export const SettingsManager: React.FC = () => {
 
       </div>
 
-      {/* Backend Roadmap Card */}
-      <div className="p-6 bg-white rounded-2xl border border-stone-200 shadow-xs space-y-3">
-        <div className="flex items-center gap-2.5 text-stone-900 font-bold text-sm">
-          <Server className="w-5 h-5 text-amber-800" />
-          <span>آمادگی معماری سیستم برای اتصال به بک‌ند (Backend Ready)</span>
+      {/* Live Backend & PostgreSQL Architecture Card */}
+      <div className="p-6 bg-white rounded-2xl border border-stone-200 shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5 text-stone-900 font-bold text-sm">
+            <Server className="w-5 h-5 text-amber-800" />
+            <span>معماری بک‌ند داکرایز شده با پایگاه داده PostgreSQL</span>
+          </div>
+          <span className="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">
+            REST API + JWT Auth + Dockerized
+          </span>
         </div>
+
         <p className="text-xs text-stone-600 leading-relaxed">
-          کلیه متدهای کار با داده‌ها در لایه کانتکست (<code className="font-mono text-amber-900">AppContext.tsx</code>) به صورت کامپوننت‌محور و ایزوله پیاده‌سازی شده‌اند. به محض تایید ظاهر و فرایندهای اجرایی، به سادگی می‌توان با اضافه کردن یک سرویس API (مانند Node.js Express یا FastAPI) متدها را به سرور متصل کرد بدون اینکه کوچک‌ترین تغییری در ظاهر فرم‌ها یا جداول نیاز باشد.
+          بک‌ند استاندارد اکسپرس همراه با اتصال امن به PostgreSQL (با استفاده از پکیج <code className="font-mono text-amber-900 font-bold">pg</code>، کوئری‌های پارامتری ضد SQL Injection، هش کلمات عبور با <code className="font-mono text-amber-900 font-bold">bcrypt</code> و احراز هویت بدون وضعیت <code className="font-mono text-amber-900 font-bold">JWT</code>) به طور کامل پیاده‌سازی و داکرایز شده است.
         </p>
+
+        {/* Command Reference Box */}
+        <div className="p-4 bg-stone-900 rounded-xl text-stone-200 font-mono text-xs space-y-2" dir="ltr">
+          <div className="text-stone-400 text-[11px] font-sans text-right">دستور اجرای آنی کل پروژه با داکر کامپوز:</div>
+          <div className="flex items-center justify-between text-amber-400">
+            <code>docker compose up -d --build</code>
+            <span className="text-stone-500 text-[11px]"># App (3000) + PostgreSQL (5432)</span>
+          </div>
+        </div>
+
+        {/* Security Features Checklist */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs text-stone-700">
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-stone-50 border border-stone-100">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>متغیرهای حساس در <code className="font-mono text-stone-800">.env</code></span>
+          </div>
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-stone-50 border border-stone-100">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>احراز هویت توکن‌های منقضی‌شونده JWT</span>
+          </div>
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-stone-50 border border-stone-100">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>پایگاه داده رابطه‌ای با والیوم دائمی</span>
+          </div>
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-stone-50 border border-stone-100">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>کارهای با کاربر امن non-root در داکر</span>
+          </div>
+        </div>
       </div>
 
       {/* Danger Zone: Reset */}
