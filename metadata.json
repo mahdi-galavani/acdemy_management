@@ -1,0 +1,6 @@
+{
+  "name": "آموزشگاه شیرینی و آشپزی فندق",
+  "description": "سامانه جامع آموزشگاه شیرینی و آشپزی فندق: لندینگ دوره‌ها، سفارش آنلاین کیک و دسر و پنل مدیریت هنرجویان",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
