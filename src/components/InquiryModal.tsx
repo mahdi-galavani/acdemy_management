@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { api } from '../services/apiClient';
 import {
   Search,
   X,
@@ -11,7 +12,8 @@ import {
   Phone,
   MessageSquare,
   AlertCircle,
-  FileCheck
+  FileCheck,
+  Server
 } from 'lucide-react';
 import { Student, Order, OrderStatus } from '../types';
 
@@ -52,6 +54,9 @@ export const InquiryModal: React.FC<InquiryModalProps> = ({ isOpen, onClose }) =
   const { students, orders, siteSettings } = useApp();
   const [query, setQuery] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
+  const [isSearchingApi, setIsSearchingApi] = useState(false);
+  const [serverCertificates, setServerCertificates] = useState<any[]>([]);
+  const [serverOrders, setServerOrders] = useState<any[]>([]);
 
   if (!isOpen) return null;
 
@@ -64,7 +69,7 @@ export const InquiryModal: React.FC<InquiryModalProps> = ({ isOpen, onClose }) =
 
   const normalizedQuery = cleanDigits(query);
 
-  // Search results
+  // Local Search results
   const matchedStudent: Student | undefined = query.trim()
     ? students.find((s) => {
         const studentPhone = cleanDigits(s.phone);
@@ -81,16 +86,37 @@ export const InquiryModal: React.FC<InquiryModalProps> = ({ isOpen, onClose }) =
       })
     : [];
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim()) {
-      setHasSearched(true);
+    if (!query.trim()) return;
+
+    setHasSearched(true);
+    setIsSearchingApi(true);
+
+    try {
+      const res = await api.searchInquiry(query.trim());
+      if (res.success && res.data) {
+        setServerCertificates(res.data.certificates || []);
+        setServerOrders(res.data.orders || []);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsSearchingApi(false);
     }
   };
 
   const handleQuickDemo = (sampleVal: string) => {
     setQuery(sampleVal);
     setHasSearched(true);
+    setIsSearchingApi(true);
+    api.searchInquiry(sampleVal).then((res) => {
+      if (res.success && res.data) {
+        setServerCertificates(res.data.certificates || []);
+        setServerOrders(res.data.orders || []);
+      }
+      setIsSearchingApi(false);
+    });
   };
 
   return (
