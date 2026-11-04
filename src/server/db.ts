@@ -22,24 +22,25 @@ export interface DatabaseStatus {
 // In-memory fallback cache in case PostgreSQL is not available in local dev without Docker
 export const inMemoryStore = {
   admins: [] as Array<{ id: string; username: string; password_hash: string; role: string }>,
-  courses: [...INITIAL_COURSES],
-  students: [...INITIAL_STUDENTS],
-  products: [...INITIAL_PRODUCTS],
-  orders: [...INITIAL_ORDERS],
-  faqs: [...INITIAL_FAQS],
-  siteSettings: { ...INITIAL_SITE_SETTINGS },
+  courses: structuredClone(INITIAL_COURSES),
+  students: structuredClone(INITIAL_STUDENTS),
+  products: structuredClone(INITIAL_PRODUCTS),
+  orders: structuredClone(INITIAL_ORDERS),
+  faqs: structuredClone(INITIAL_FAQS),
+  siteSettings: structuredClone(INITIAL_SITE_SETTINGS),
 };
 
 let pool: pg.Pool | null = null;
 let isConnected = false;
-let connectionAttempted = false;
+let postgresMode = false;
+export function usesPostgres() { return postgresMode; }
 
 export function getPool(): pg.Pool | null {
   if (pool) return pool;
 
   try {
     const poolConfig: pg.PoolConfig = config.database.url
-      ? { connectionString: config.database.url, ssl: config.database.ssl }
+      ? { connectionString: config.database.url, ssl: config.database.ssl, connectionTimeoutMillis: 3000 }
       : {
           host: config.database.host,
           port: config.database.port,
@@ -85,9 +86,9 @@ export async function query<T extends pg.QueryResultRow = any>(sql: string, para
  * Initialize PostgreSQL tables, indexes, and initial data
  */
 export async function initDatabase(): Promise<DatabaseStatus> {
-  connectionAttempted = true;
   const p = getPool();
   if (!p) {
+    if (!config.allowMemoryFallback) throw new Error('PostgreSQL is required.');
     // Seed in-memory admin
     const defaultHash = await bcrypt.hash(config.admin.password, 10);
     inMemoryStore.admins = [
@@ -100,9 +101,11 @@ export async function initDatabase(): Promise<DatabaseStatus> {
     };
   }
 
+  let client: pg.PoolClient | undefined;
   try {
-    // Test basic connection
-    const client = await p.connect();
+    client = await p.connect();
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(72461031)');
     isConnected = true;
     console.log('✅ [PostgreSQL Connected]: Successfully connected to database', config.database.name);
 
@@ -238,6 +241,9 @@ export async function initDatabase(): Promise<DatabaseStatus> {
       );
     `);
 
+    const seedMarker = await client.query("SELECT id FROM site_settings WHERE id = '__seed_v1'");
+    if (!seedMarker.rows.length) {
+    // Seed only once; an intentionally emptied table must stay empty after restart.
     // Seed default admin if table is empty
     const adminCheck = await client.query('SELECT COUNT(*) FROM admins');
     if (parseInt(adminCheck.rows[0].count, 10) === 0) {
@@ -334,7 +340,10 @@ export async function initDatabase(): Promise<DatabaseStatus> {
       );
     }
 
-    client.release();
+    await client.query("INSERT INTO site_settings (id, data) VALUES ('__seed_v1', '{}'::jsonb) ON CONFLICT DO NOTHING");
+    }
+    await client.query('COMMIT');
+    postgresMode = true;
 
     return {
       connected: true,
@@ -344,8 +353,10 @@ export async function initDatabase(): Promise<DatabaseStatus> {
     };
   } catch (err: any) {
     console.warn('⚠️ [PostgreSQL Connection Note]: Could not connect to PostgreSQL instance:', err.message);
-    console.info('💡 Running with robust in-memory fallback. All data operations will function smoothly.');
     isConnected = false;
+    if (client) await client.query('ROLLBACK').catch(() => {});
+    if (!config.allowMemoryFallback) throw new Error('PostgreSQL unavailable; persistent storage is required.');
+    console.warn('Temporary memory storage: data will be lost on restart.');
 
     // Seed in-memory admin
     const defaultHash = await bcrypt.hash(config.admin.password, 10);
@@ -358,7 +369,7 @@ export async function initDatabase(): Promise<DatabaseStatus> {
       type: 'in_memory_fallback',
       message: `PostgreSQL connection unavailable (${err.message}). Using in-memory store.`,
     };
-  }
+  } finally { client?.release(); }
 }
 
 export function isDbConnected(): boolean {

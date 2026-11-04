@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="MarkdownSettings">
+    <option name="customStylesheetText" value="body {&#10;    direction: rtl !important;&#10;    text-align: right !important;&#10;    font-family: &quot;2 Koodak&quot;, &quot;B Koodak&quot;, Tahoma, sans-serif !important;&#10;    font-size: 16px !important;&#10;    line-height: 2 !important;&#10;}" />
+    <option name="useCustomStylesheetText" value="true" />
+  </component>
+</project>

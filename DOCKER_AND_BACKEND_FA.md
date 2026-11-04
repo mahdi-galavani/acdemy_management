@@ -1,241 +1,228 @@
-# مستندات جامع فنی: معماری بک‌ند، احراز هویت و داکرایز با PostgreSQL
-## سامانه آموزشگاه شیرینی و آشپزی فندق (Fandoq Academy & Confectionery)
+﻿# راهنمای فنی بک‌اند، PostgreSQL و Docker سامانه فندق
 
-> **مخاطب این سند:** مهندسان نرم‌افزار، توسعه‌دهندگان DevSecOps و مدل‌های هوش مصنوعی (AI Agents) آینده که قصد نگهداری، ارتقا یا استقرار این پروژه را دارند.
+آخرین بازبینی کد و آزمون محلی: **۲۰۲۶-۱۱-۰۴**. معرفی امکانات رابط کاربری در [README_FA.md](README_FA.md) است.
 
----
+> بک‌اند قابل اجرا و بخشی از APIها موجود است، اما عملیات اصلی فرانت‌اند هنوز به API وصل نیست. این سند وضعیت پیاده‌سازی‌شده و کمبودهای آن را از هم جدا می‌کند؛ وجود Dockerfile، JWT یا جدول‌های دیتابیس به معنی آمادگی برای بهره‌برداری نیست.
 
-## ۱. نمای کلی معماری (System Architecture)
-
-پروژه به صورت یکپارچه (Unified Full-Stack) طراحی شده است تا ساده‌ترین و در عین حال امن‌ترین حالت استقرار را فراهم آورد:
+## ۱. معماری موجود و مسیر داده
 
 ```text
-                                [ اینترنت / مرورگر کلاینت ]
-                                             │
-                                             ▼ پورت 3000
-                       ┌───────────────────────────────────────────────┐
-                       │  کانتینر داکر اپلیکیشن (fandoq_app)            │
-                       │  Node.js 22 Alpine (Non-root user: node)      │
-                       │                                               │
-                       │  ┌─────────────────────────────────────────┐  │
-                       │  │ Express Full-Stack Server (server.ts)   │  │
-                       │  └───────────────────┬─────────────────────┘  │
-                       │                      │                        │
-                       │         ┌────────────┴───────────┐            │
-                       │         ▼                        ▼            │
-                       │   /api/* (REST API)      /* (Static Frontend) │
-                       │   - JWT Auth & Bcrypt    - React 19 SPA       │
-                       │   - Param SQL Queries    - Tailwind CSS 4     │
-                       │   - In-Memory Fallback   - Client-side State  │
-                       └──────────────────────┬────────────────────────┘
-                                              │ شبکه داخلی داکر (fandoq_network)
-                                              ▼ پورت 5432
-                       ┌───────────────────────────────────────────────┐
-                       │  کانتینر دیتابیس (fandoq_postgres)            │
-                       │  PostgreSQL 16 Alpine                         │
-                       │  - Healthcheck (pg_isready)                   │
-                       │  - ذخیره‌سازی داده دائمی (Volume: pgdata)    │
-                       └───────────────────────────────────────────────┘
+مرورگر
+  ├─ React SPA → AppContext → localStorage همان مرورگر
+  └─ apiClient (فعلاً ورود مدیر و health) → Express /api
+
+server.ts — Node.js + Express + tsx
+  ├─ توسعه: Vite middleware برای فرانت‌اند
+  ├─ Production: فایل‌های dist و fallback صفحه SPA
+  └─ src/server/routes.ts
+       ├─ auth.ts: JWT و bcryptjs
+       └─ db.ts: pg Pool → PostgreSQL
+                    └─ در نبود اتصال هنگام شروع: inMemoryStore در RAM
 ```
 
-### چرا معماری یکپارچه (Unified Full-Stack) انتخاب شد؟
-1. **حذف مشکلات CORS و کوکی در مرورگر:** فرانت‌اند و بک‌ند روی یک پورت (`3000`) اجرا می‌شوند؛ بنابراین نیازی به هدرهای پیچیده Cross-Origin نیست.
-2. **استقرار تک‌دستوری با داکر:** تنها با اجرای یک دستور `docker compose up -d` کل سامانه (سرور + دیتابیس) بالا می‌آید.
-3. **انعطاف در محیط توسعه و تست:** در حالت توسعه محلی اگر داکر یا پستگرس در دسترس نباشد، سرور به طور خودکار به یک لایه ذخیره‌سازی امن Fallback سوئیچ می‌کند و سیستم متوقف نمی‌شود.
+فرانت‌اند و API معمولاً روی یک مبدأ و پورت `3000` ارائه می‌شوند. برنامه WebSocket، push، صف آفلاین، SQLite یا ذخیره خودکار فایل JSON روی سرور ندارد. تغییرات انجام‌شده در UI به RAM سرور یا PostgreSQL ارسال نمی‌شوند؛ برچسب اتصال دیتابیس در داشبورد صرفاً نتیجه health بک‌اند است.
 
----
+| فایل | مسئولیت |
+|---|---|
+| `server.ts` | تنظیم CORS، دریافت JSON تا ۱۰ مگابایت، لاگ درخواست API، راه‌اندازی DB و ارائه UI |
+| `src/server/config.ts` | خواندن `.env` و پیش‌فرض‌های محیط |
+| `src/server/db.ts` | Pool، ساخت جدول‌ها، seed و RAM fallback |
+| `src/server/auth.ts` | تولید/اعتبارسنجی JWT و `requireAuth` |
+| `src/server/routes.ts` | تمام ۱۶ مسیر API فعلی |
+| `src/services/apiClient.ts` | fetch و مدیریت توکن در مرورگر |
+| `src/context/AppContext.tsx` | داده‌ها و عملیات محلی رابط کاربری |
+| `src/types/index.ts` | قراردادهای TypeScript؛ جایگزین اعتبارسنجی ورودی HTTP نیست |
 
-## ۲. راهنمای استقرار و راه‌اندازی سریع با داکر (Quick Start)
+## ۲. ماندگاری و قطع اتصال
 
-### مرحله ۱: تنظیم متغیرهای محیطی
-یک کپی از فایل نمونه متغیرها بسازید:
-```bash
-cp .env.example .env
+### LocalStorage رابط کاربری
+
+دوره‌ها، هنرجویان و ثبت‌نام‌ها، محصولات، سفارشات، FAQ، تنظیمات و سبد خرید در کلیدهای `fandoq_*_v1` ذخیره می‌شوند. این داده‌ها برای همان مرورگر و مبدأ هستند و با رفرش باقی می‌مانند. پاک‌کردن داده سایت، استفاده از دستگاه دیگر یا تغییر پورت/دامنه نتیجه متفاوتی دارد. هیچ مهاجرت خودکاری از این داده‌ها به دیتابیس وجود ندارد.
+
+### RAM بک‌اند
+
+`inMemoryStore` از داده‌های نمونه `initialData.ts` ساخته می‌شود. اگر اتصال یا آماده‌سازی دیتابیس در شروع شکست بخورد، مسیرهای موجود از آن استفاده می‌کنند. این رفتار به محیط development محدود نشده و در production نیز فعال است.
+
+- داده API بین درخواست‌های همان فرایند باقی می‌ماند، ولی با توقف یا ری‌استارت سرور حذف می‌شود.
+- RAM هر فرایند یا replica مستقل است؛ بین چند نمونه سرور اشتراک ندارد.
+- کش RAM از آخرین محتوای PostgreSQL بارگذاری نمی‌شود. برخی نوشتن‌ها هر دو را تغییر می‌دهند، اما RAM یک کپی کامل و قابل اتکای دیتابیس نیست.
+- هنگام قطع DB پس از شروع، رفتار یکسان نیست: برخی GETها در `catch` داده نمونه/حافظه را با پاسخ موفق برمی‌گردانند؛ نوشتن‌ها ممکن است ۵۰۰ بدهند. رویداد خطای Pool پرچم اتصال را false می‌کند؛ در این حالت درخواست‌های بعدی ممکن است به RAM بروند.
+- مسیر اجرایی برای retry راه‌اندازی DB، بازگرداندن پرچم اتصال یا انتقال تغییرات RAM به PostgreSQL پیاده‌سازی نشده است. بنابراین قطع و وصل دیتابیس یک fallback پایدار و همگام‌شونده نیست.
+
+### PostgreSQL
+
+در اتصال موفق، APIهای موجود SQL اجرا می‌کنند. در Compose داده‌ها روی volume نام‌دار `fandoq_pgdata` هستند و با بازسازی کانتینر، تا زمانی که volume حفظ شود، باقی می‌مانند. خروجی JSON پنل فقط داده مرورگر را ذخیره می‌کند؛ پشتیبان کامل دیتابیس، حساب‌های مدیر یا volume نیست.
+
+`GET /api/health` هم در حالت RAM و هم DB پاسخ HTTP 200 می‌دهد. فیلد `database.connected` وضعیت ذخیره‌شده در برنامه است؛ endpoint هر بار `SELECT 1` نمی‌زند. healthcheck کانتینر app فقط HTTP موفق را می‌سنجد و سلامت PostgreSQL یا آماده‌بودن ذخیره‌سازی پایدار را تضمین نمی‌کند.
+
+## ۳. اسکیما و seed واقعی
+
+مرجع اجرایی DDL، فایل [src/server/db.ts](src/server/db.ts) است. هنگام شروع `CREATE TABLE IF NOT EXISTS` اجرا می‌شود؛ ابزار migration نسخه‌دار یا دستور مستقل migration وجود ندارد. تغییر تعریف ستون در سورس، جدول قدیمی را خودکار ارتقا نمی‌دهد.
+
+| جدول | داده و رابطه اصلی | seed فعلی |
+|---|---|---|
+| `admins` | نام کاربری یکتا، هش رمز، role و last_login | یک مدیر پیش‌فرض اگر جدول خالی باشد |
+| `courses` | قیمت، ظرفیت، `enrolled_count`، مشخصات و `syllabus_items` از نوع JSONB | دوره‌های نمونه اگر جدول خالی باشد |
+| `students` | نام، موبایل، کد ملی، ایمیل و یادداشت | هنرجویان نمونه اگر جدول خالی باشد |
+| `course_enrollments` | ارتباط هنرجو/دوره، شهریه، وضعیت پرداخت و صدور مدرک | همراه seed هنرجویان |
+| `products` | مشخصات، قیمت، موجودی و `ingredients` از نوع JSONB | محصولات نمونه اگر جدول خالی باشد |
+| `orders` | شماره سفارش یکتا، مشتری، مبلغ، وضعیت و `items` از نوع JSONB | **سفارش‌های نمونه در PostgreSQL seed نمی‌شوند** |
+| `faqs` | پرسش، پاسخ، دسته و `sort_order` | پرسش‌های نمونه اگر جدول خالی باشد |
+| `site_settings` | سند JSONB در ستون `data` با شناسه `main` | تنظیمات اولیه در نبود رکورد main |
+
+حذف هنرجو در DB ثبت‌نام‌های او را با `ON DELETE CASCADE` حذف می‌کند. حذف دوره، `course_id` ثبت‌نام‌ها را با `ON DELETE SET NULL` خالی می‌کند. برای شناسه هنرجو و دوره در جدول ثبت‌نام index وجود دارد. شماره موبایل هنرجو unique نیست و محدودیت یکتایی ترکیب هنرجو/دوره تعریف نشده است.
+
+seed بخشی از startup است و تراکنش جامع ندارد؛ شکست میانه آن می‌تواند داده ناقص ایجاد کند. client دیتابیس فقط در مسیر موفق آزاد می‌شود و `finally` برای آزادسازی در شکست initialization ندارد. داده نمونه دارای تاریخ‌ها و اطلاعات نمایشی است و نباید با داده واقعی آموزشگاه اشتباه شود.
+
+## ۴. قرارداد API پیاده‌سازی‌شده
+
+تمام مسیرهای جدول پیشوند `/api` دارند. مسیرهای «JWT» به هدر `Authorization: Bearer <token>` نیاز دارند. middleware اعتبار JWT را می‌سنجد؛ کنترل مجوز تفصیلی بر اساس role پیاده‌سازی نشده است.
+
+| متد | مسیر | دسترسی | خروجی اصلی / رفتار |
+|---|---|---|---|
+| GET | `/health` | عمومی | `status`, `database`, `environment`, `uptimeSeconds` |
+| POST | `/auth/login` | عمومی | ورودی `username`, `password`؛ خروجی `token`, `admin` |
+| GET | `/auth/me` | JWT | payload توکن در `admin`؛ بدون مراجعه مجدد به جدول مدیر |
+| GET | `/settings` | عمومی | `settings` |
+| PUT | `/settings` | JWT | ذخیره سند تنظیمات؛ خروجی `settings` |
+| GET | `/courses` | عمومی | `courses` |
+| POST | `/courses` | JWT | ایجاد دوره؛ خروجی `course` |
+| DELETE | `/courses/:id` | JWT | حذف دوره |
+| GET | `/students` | JWT | `students` همراه آرایه `enrollments` |
+| POST | `/students` | JWT | ایجاد هنرجو و اولین ثبت‌نام؛ خروجی `student` |
+| POST | `/students/:id/enroll` | JWT | افزودن ثبت‌نام؛ خروجی `enrollment` |
+| DELETE | `/students/:id` | JWT | حذف هنرجو |
+| GET | `/products` | عمومی | `products` |
+| GET | `/orders` | JWT | `orders` |
+| POST | `/orders` | عمومی | ایجاد سفارش؛ خروجی `order`, `orderNumber` |
+| GET | `/inquiry?q=...` | عمومی | `certificates`, `orders`؛ حداقل طول جستجو ۳ کاراکتر |
+
+به‌جز health، پاسخ‌های موفق معمولاً `{ success: true, ... }` و خطاها `{ success: false, error }` هستند. خطای اعتبارسنجی محدود موجود ۴۰۰، خطای توکن/ورود ۴۰۱ و اغلب خطاهای SQL در مسیرهای نوشتن ۵۰۰ است. عملیات ایجاد فعلاً HTTP 200 برمی‌گرداند.
+
+`apiRequest` پاسخ سرور را داخل `data` قرار می‌دهد؛ بنابراین فهرست هنرجویان از `result.data.students` خوانده می‌شود. مسیر ثبت‌نام `/enroll` است؛ `/enrollments` در بک‌اند موجود نیست. مثال مصرف API برای توسعه آتی، که هنوز در AppContext استفاده نشده:
+
+```typescript
+import { apiRequest } from './src/services/apiClient';
+
+// پس از ورود معتبر؛ در عمل import باید متناسب با محل فایل تنظیم شود.
+const result = await apiRequest('/api/students');
+if (!result.success) throw new Error(result.error);
+const students = result.data.students;
+
+const enrollmentResult = await apiRequest(`/api/students/${studentId}/enroll`, {
+  method: 'POST',
+  body: JSON.stringify({ courseId, courseTitle, tuitionTotal, tuitionPaid }),
+});
 ```
-مقادیر `POSTGRES_PASSWORD` و `JWT_SECRET` را برای محیط عملیاتی به مقادیر امن و تصادفی تغییر دهید.
 
-### مرحله ۲: بیلد و اجرای کانتینرها
-```bash
+متغیرهای مثال باید از فرم برنامه تأمین شوند. `PUT /settings` در DB سند را کامل جایگزین می‌کند، اما در RAM با تنظیمات موجود merge می‌کند؛ تا اصلاح این تفاوت، سند کامل ارسال شود. فیلدهای خروجی استعلام عمدتاً snake_case هستند و با مدل‌های camelCase فرانت‌اند یکسان نیستند.
+
+### APIهای غایب
+
+- ویرایش دوره؛ ویرایش مشخصات هنرجو؛ ویرایش/حذف ثبت‌نام و صدور مدرک/تغییر شهریه.
+- ایجاد، ویرایش و حذف محصول؛ تمام عملیات FAQ، حتی GET.
+- تغییر وضعیت یا حذف سفارش؛ عملیات مستقل پشتیبان/بازیابی سرور.
+- ثبت‌نام عمومی هنرجو؛ `POST /students` فعلی مختص JWT مدیر است.
+- مدیریت حساب‌ها و تغییر رمز، OTP/پیامک، درگاه پرداخت و تولید گواهی.
+
+وجود دکمه این عملیات در UI به معنای وجود API متناظر نیست. API 404 اختصاصی نیز تعریف نشده؛ در production مسیر ناشناخته GET ممکن است از fallback SPA فایل HTML با وضعیت ۲۰۰ دریافت کند.
+
+## ۵. احراز هویت و محدودیت‌های آماده‌سازی
+
+موارد موجود: bcryptjs با هزینه ۱۰ برای هش رمز، JWT امضاشده، SQL پارامتری در queryهای فعلی، محدودیت ۱۰ مگابایت body و اجرای کانتینر با کاربر `node`. این کنترل‌ها به‌تنهایی تضمین امنیت سامانه نیستند.
+
+موارد مشخصی که پیش از استفاده عملیاتی باید اصلاح شوند:
+
+1. **ورود نمایشی فرانت‌اند:** `AdminLoginModal.tsx` پس از شکست درخواست ورود، `admin` با رمز `fandoq@2025` یا `admin` را می‌پذیرد و توکن mock می‌سازد؛ این شرط صرفاً به قطع شبکه محدود نیست. `isAuthenticated()` فقط وجود رشته توکن را بررسی می‌کند و UI از `/auth/me` استفاده نمی‌کند. توکن mock به APIهای JWT دسترسی معتبر نمی‌دهد، اما مانع ورود به پنل محلی نیست.
+2. **پیش‌فرض‌های ثابت:** رمز و کلید JWT پیش‌فرض در config/Compose/فایل نمونه وجود دارند؛ فرم ورود نیز اطلاعات دمو را از پیش پر می‌کند. تغییر env، حساب موجود دیتابیس را تغییر نمی‌دهد؛ seed مدیر فقط روی جدول خالی انجام می‌شود.
+3. **استعلام عمومی:** API با تطبیق بخشی از موبایل و بدون OTP اطلاعات سوابق را برمی‌گرداند. محدودیت تعداد درخواست و بررسی مالکیت شماره وجود ندارد؛ پیش از استفاده از داده واقعی باید اصلاح شود.
+4. **صحت مالی و ثبت‌نام:** مبلغ سفارش از کلاینت پذیرفته می‌شود، قیمت محصول در سرور دوباره محاسبه نمی‌شود. ثبت هنرجو و enrollment تراکنشی نیست؛ کنترل ظرفیت، جلوگیری از تکرار و افزایش `enrolled_count` در مسیرهای ثبت‌نام API پیاده‌سازی نشده است. کد رهگیری تصادفی تضمین عدم برخورد و retry ندارد.
+5. **اعتبارسنجی:** schema زمان اجرا برای bodyها موجود نیست. در حالت RAM برخی داده‌های نامعتبر یا شناسه‌های ناموجود ممکن است پاسخ موفق بگیرند. نقش داخل JWT کنترل مجوز ریزدانه ایجاد نمی‌کند.
+6. **پاسخ خطا و اتصال:** بعضی GETها خطای DB را با داده RAM و پاسخ موفق پنهان می‌کنند. بعضی پاسخ‌های ۵۰۰ شامل متن خطای داخلی هستند. حالت production منطق عمومی حذف لاگ حساس ندارد.
+7. **تصاویر Production:** مسیرهای رشته‌ای `/src/assets/images/...` در داده‌ها و کامپوننت‌ها در خروجی فعلی به فایل تصویر تبدیل نشده‌اند. راه اصلاح می‌تواند انتقال به `public` با URL پایدار یا import صحیح asset در بخش کلاینت، همراه با هماهنگ‌کردن URLهای seed سرور باشد. این اصلاح هنوز انجام نشده است.
+
+## ۶. تنظیمات محیطی واقعی
+
+مرجع پیش‌فرض‌ها `src/server/config.ts` است. `.env` در Git نادیده گرفته می‌شود، ولی نبود آن مانع اجرا نیست چون کد پیش‌فرض دارد.
+
+| متغیر | رفتار فعلی |
+|---|---|
+| `PORT` | پیش‌فرض `3000` |
+| `NODE_ENV` | پیش‌فرض کد و فایل نمونه `development`؛ Docker آن را `production` می‌کند |
+| `CORS_ORIGIN` | پیش‌فرض `*`؛ Express هم‌زمان `credentials: true` دارد؛ برای مصرف cross-origin نیازمند تنظیم مبدأ مناسب است |
+| `DATABASE_URL` | اگر مقدار داشته باشد به تنظیمات مجزای host/user/password اولویت دارد |
+| `POSTGRES_HOST` | پیش‌فرض کد `localhost`؛ فایل نمونه و کانتینر app مقدار `postgres` دارند |
+| `POSTGRES_PORT` | پیش‌فرض `5432` |
+| `POSTGRES_DB` / `POSTGRES_USER` | پیش‌فرض `fandoq_db` / `fandoq_user` |
+| `POSTGRES_PASSWORD` | مقدار نمونه ثابت دارد؛ برای استفاده واقعی باید تغییر کند |
+| `POSTGRES_SSL` | فقط مقدار `true` SSL را فعال می‌کند؛ کد فعلی `rejectUnauthorized: false` دارد و گواهی را اعتبارسنجی نمی‌کند |
+| `JWT_SECRET` | مقدار fallback ثابت در کد؛ برای استفاده واقعی کلید مستقل و تصادفی لازم است |
+| `JWT_EXPIRES_IN` | پیش‌فرض `7d` |
+| `ADMIN_DEFAULT_USERNAME` / `ADMIN_DEFAULT_PASSWORD` | پیش‌فرض دمو `admin` / `fandoq@2025`؛ فقط seed اولیه |
+| `DISABLE_HMR` | مقدار `true` در تنظیمات Vite، HMR و watch آن را غیرفعال می‌کند |
+
+`POSTGRES_SSL` در config پشتیبانی می‌شود، ولی در `.env.example` مستند نشده است. نام سرویس‌های پیامک در فایل نمونه فقط کامنت‌اند و مصرف‌کننده اجرایی ندارند.
+
+**نکته Compose:** صرف نوشتن یک متغیر در `.env` به معنی ارسال آن به کانتینر نیست. `DATABASE_URL`، `POSTGRES_SSL` و `JWT_EXPIRES_IN` در بخش `app.environment` فعلی فهرست نشده‌اند. برای استفاده از آن‌ها در کانتینر باید Compose تکمیل شود. `PORT` داخل app و mapping پورت نیز در Compose فعلی صریحاً ۳۰۰۰ است.
+
+## ۷. اجرای محلی و Docker
+
+### توسعه محلی در PowerShell
+
+```powershell
+npm install
+# فایل موجود را بازنویسی نکنید.
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
+# برای DB نصب‌شده روی سیستم، POSTGRES_HOST را در .env برابر localhost بگذارید.
+npm run dev
+```
+
+فرانت‌اند و API روی `http://localhost:3000` هستند. `npm run dev` و `npm start` هر دو `tsx server.ts` را اجرا می‌کنند؛ انتخاب Vite یا dist با `NODE_ENV` است. برای تغییرات سرور watch مستقل تنظیم نشده است. `npm run preview` فقط فرانت‌اند را ارائه می‌کند و API ندارد.
+
+### Compose
+
+پس از آماده‌بودن Docker daemon و تنظیم مقادیر محیطی مناسب:
+
+```powershell
 docker compose up -d --build
-```
-
-### مرحله ۳: بررسی سلامت کانتینرها
-```bash
 docker compose ps
 docker compose logs -f app
 ```
-پس از چند ثانیه، سامانه در آدرس زیر در دسترس خواهد بود:
-- **وب‌سایت و پنل مدیریت:** `http://localhost:3000`
-- **اندپوینت بررسی سلامت:** `http://localhost:3000/api/health`
 
-### توقف و حذف کانتینرها (بدون حذف داده‌های دیتابیس):
-```bash
-docker compose down
+Compose دو سرویس `app` و `postgres` می‌سازد. PostgreSQL نسخه `16-alpine` و Dockerfile برنامه `node:22-alpine` است. app تا healthyشدن سرویس postgres منتظر می‌ماند؛ بنابراین سناریوی fallback آغاز کار بدون DB را مستقیماً با اجرای Node بررسی کنید، نه با انتظار اجرای app در Compose وقتی postgres بالا نیامده است.
+
+- پورت app روی میزبان `3000` و PostgreSQL روی `5432` منتشر شده است. دیتابیس فقط محدود به شبکه داخلی Docker نیست؛ دامنه انتشار پورت برای محیط مقصد بررسی شود.
+- داده DB در volume نام‌دار `fandoq_pgdata` قرار دارد.
+- `docker compose down` کانتینرها را متوقف و حذف می‌کند و volume نام‌دار را نگه می‌دارد.
+- `docker compose down -v` داده volume را هم حذف می‌کند؛ برای توقف معمولی استفاده نشود.
+- build فعلی Docker از `npm install` استفاده می‌کند و عبارت `--frozen-lockfile` آن جایگزین اجرای قطعی `npm ci` نیست. یکدست‌کردن سیاست lockfile و بررسی نصب از صفر لازم است.
+- stage نهایی علاوه بر dist، فایل‌های TypeScript سرور را کپی و با `tsx` اجرا می‌کند؛ بک‌اند خروجی کامپایل‌شده جدا ندارد.
+
+### بررسی سلامت
+
+```powershell
+Invoke-RestMethod http://localhost:3000/api/health
 ```
 
-### حذف کامل همراه با داده‌های دیتابیس (Reset):
-```bash
-docker compose down -v
-```
+برای تشخیص حالت فعلی، `database.type` و `database.connected` را بخوانید؛ صرف `status: ok` یا healthy بودن کانتینر app به معنی اتصال DB نیست.
 
----
+## ۸. آزمون‌های انجام‌شده و معیار تکمیل
 
-## ۳. امنیت و متغیرهای محیطی (Security Guidelines)
+نتیجه بازبینی ۲۰۲۶-۱۱-۰۴ با Node.js `23.11.1` و وابستگی‌های نصب‌شده موجود:
 
-کلیه تنظیمات حساس از طریق فایل `.env` بارگذاری می‌شوند و هیچ رمزی در سورس‌کد هاردکد نشده است:
+| بررسی | نتیجه |
+|---|---|
+| `npm run lint` | موفق؛ فقط type-check است |
+| `npm run build` | موفق؛ هشدار `__dirname` و chunk حدود ۵۰۲ کیلوبایت |
+| اجرای Production با DB عمداً ناموجود | موفق، health نوع `in_memory_fallback` را گزارش کرد |
+| دسترسی به students بدون توکن | ۴۰۱ |
+| ورود API با حساب موقت و `/auth/me` | موفق |
+| ثبت سفارش API و خواندن در همان فرایند | موفق |
+| خواندن همان سفارش بعد از ری‌استارت | سفارش حذف شده بود؛ عدم ماندگاری RAM تأیید شد |
+| تصویر نمونه در Production | به‌جای تصویر پاسخ `text/html`؛ مشکل asset تأیید شد |
+| اتصال واقعی PostgreSQL و اجرای Docker | انجام نشد؛ Docker daemon در دسترس نبود |
+| آزمون بصری UI، نصب از صفر و آزمون چندکاربره | انجام نشد |
 
-| متغیر محیطی | مقدار پیش‌فرض | توضیحات امنیتی |
-|---|---|---|
-| `PORT` | `3000` | پورت وب سرور |
-| `NODE_ENV` | `production` | در حالت پروداکشن، لاگ‌های حساس مخفی می‌شوند |
-| `POSTGRES_HOST` | `postgres` | نام هاست سرویس دیتابیس در شبکه داکر |
-| `POSTGRES_PORT` | `5432` | پورت اتصال به PostgreSQL |
-| `POSTGRES_DB` | `fandoq_db` | نام پایگاه داده آموزشگاه |
-| `POSTGRES_USER` | `fandoq_user` | نام کاربری دیتابیس |
-| `POSTGRES_PASSWORD` | `fandoq_secure_pass_2025` | **بسیار مهم:** در پروداکشن حتماً تغییر کند |
-| `JWT_SECRET` | *رشته رندوم* | کلید امضای رمزنگاری توکن‌های JWT ادمین |
-| `JWT_EXPIRES_IN` | `7d` | مدت زمان اعتبار نشست ادمین |
-| `ADMIN_DEFAULT_USERNAME` | `admin` | نام کاربری ادمین پیش‌فرض |
-| `ADMIN_DEFAULT_PASSWORD` | `fandoq@2025` | کلمه عبور پیش‌فرض (تولید هش با Bcrypt) |
+آزمون HTTP در فرایند موقت با پورت جدا و مشخصات موقت انجام شد و سرور آزمایشی متوقف شد. اسکریپت test یا مجموعه تست خودکار در پروژه تعریف نشده است. عبور از build و type-check به معنی تأیید همه گردش‌کارها نیست.
 
-### تمهیدات امنیتی اعمال شده:
-1. **کوئری‌های پارامتری شده (Parameterized Queries):** تمام ورودی‌های کاربران با `$1, $2, ...` در کلاینت `pg` اجرا می‌شوند که خطر SQL Injection را به صفر می‌رساند.
-2. **هشینگ کلمات عبور با Bcrypt:** پسورد ادمین با ۱۰ راند نمک (Salt Rounds = 10) هش می‌شود و هرگز به صورت متن خام در دیتابیس ذخیره نخواهد شد.
-3. **احراز هویت بدون وضعیت با JWT (Stateless JWT):** دسترسی به روت‌های مدیریتی نیاز به هدر `Authorization: Bearer <token>` دارد.
-4. **کاربر غیر روت در کانتینر داکر (`USER node`):** اجرای فرآیندها درون کانتینر با کاربر سیستمی `node` انجام می‌شود تا از حملات Container Breakout پیشگیری گردد.
-5. **محدودسازی حجم بادی درخواست‌ها (`limit: 10mb`):** جلوگیری از حملات پرکردن حافظه سرور (DoS Memory Exhaustion).
-
----
-
-## ۴. اسکیما و ساختار پایگاه داده PostgreSQL
-
-مایگریشن جداول به صورت خودکار در اولین اتصال سرور اجرا شده و در صورت خالی بودن دیتابیس، داده‌های استاندارد اولیه آموزشگاه فندق تزریق (Seed) می‌شوند:
-
-### جدول مدیران (`admins`):
-```sql
-CREATE TABLE admins (
-  id VARCHAR(64) PRIMARY KEY,
-  username VARCHAR(100) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  role VARCHAR(50) DEFAULT 'admin',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  last_login TIMESTAMP WITH TIME ZONE
-);
-```
-
-### جدول دوره‌های آموزشی (`courses`):
-```sql
-CREATE TABLE courses (
-  id VARCHAR(64) PRIMARY KEY,
-  title VARCHAR(255) NOT NULL,
-  slug VARCHAR(255) UNIQUE,
-  category VARCHAR(100),
-  price NUMERIC(15, 2) NOT NULL DEFAULT 0,
-  discount_price NUMERIC(15, 2),
-  capacity INT DEFAULT 12,
-  enrolled_count INT DEFAULT 0,
-  format VARCHAR(50) DEFAULT 'in_person',
-  format_label VARCHAR(100),
-  duration VARCHAR(100),
-  sessions_count INT DEFAULT 1,
-  certificate VARCHAR(150),
-  instructor VARCHAR(100),
-  instructor_role VARCHAR(100),
-  syllabus_items JSONB DEFAULT '[]'::jsonb,
-  prerequisites TEXT,
-  level VARCHAR(50),
-  start_date VARCHAR(50),
-  schedule VARCHAR(150),
-  image TEXT,
-  status VARCHAR(50) DEFAULT 'registering',
-  description TEXT,
-  materials_provided BOOLEAN DEFAULT true,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### جدول هنرجویان (`students`):
-```sql
-CREATE TABLE students (
-  id VARCHAR(64) PRIMARY KEY,
-  full_name VARCHAR(150) NOT NULL,
-  national_code VARCHAR(20),
-  phone VARCHAR(30) NOT NULL,
-  email VARCHAR(150),
-  notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### جدول سوابق ثبت‌نام چندگانه (`course_enrollments`):
-```sql
-CREATE TABLE course_enrollments (
-  id VARCHAR(64) PRIMARY KEY,
-  student_id VARCHAR(64) REFERENCES students(id) ON DELETE CASCADE,
-  course_id VARCHAR(64) REFERENCES courses(id) ON DELETE SET NULL,
-  course_title VARCHAR(255),
-  enrolled_at VARCHAR(50),
-  tuition_total NUMERIC(15, 2) DEFAULT 0,
-  tuition_paid NUMERIC(15, 2) DEFAULT 0,
-  payment_status VARCHAR(50) DEFAULT 'pending',
-  certificate_issued BOOLEAN DEFAULT false,
-  status VARCHAR(50) DEFAULT 'active',
-  notes TEXT
-);
-CREATE INDEX idx_enrollment_student ON course_enrollments(student_id);
-```
-
-### جدول سفارشات کیک و شیرینی (`orders`):
-```sql
-CREATE TABLE orders (
-  id VARCHAR(64) PRIMARY KEY,
-  order_number VARCHAR(50) UNIQUE NOT NULL,
-  customer_name VARCHAR(150) NOT NULL,
-  customer_phone VARCHAR(50) NOT NULL,
-  delivery_date VARCHAR(50),
-  delivery_address TEXT,
-  items JSONB DEFAULT '[]'::jsonb,
-  total_amount NUMERIC(15, 2) NOT NULL DEFAULT 0,
-  status VARCHAR(50) DEFAULT 'pending',
-  notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### جدول تنظیمات عمومی سایت (`site_settings`):
-شامل نام برند، تلفن‌ها، بیوگرافی و آرایه پویا از تمام شبکه‌های اجتماعی (اینستاگرام، تلگرام، ایتا، بله، روبیکا، آپارات و...).
-
----
-
-## ۵. فهرست کامل اندپوینت‌های REST API
-
-| متد | آدرس اندپوینت | سطح دسترسی | شرح کاربرد |
-|---|---|---|---|
-| `GET` | `/api/health` | عمومی | وضعیت سلامت سرور و اتصال به دیتابیس PostgreSQL |
-| `POST` | `/api/auth/login` | عمومی | ورود ادمین با نام کاربری و رمزعبور و دریافت توکن JWT |
-| `GET` | `/api/auth/me` | محافظت‌شده (JWT) | احراز هویت توکن فعلی ادمین و دریافت مشخصات کاربری |
-| `GET` | `/api/settings` | عمومی | دریافت تنظیمات هدر، فوتر، تلفن‌ها و شبکه‌های اجتماعی |
-| `PUT` | `/api/settings` | محافظت‌شده (JWT) | ذخیره و به‌روزرسانی تنظیمات عمومی سایت |
-| `GET` | `/api/courses` | عمومی | دریافت لیست کامل دوره‌های آموزشی و کارگاه‌ها |
-| `POST` | `/api/courses` | محافظت‌شده (JWT) | ایجاد کارگاه یا دوره جدید |
-| `DELETE` | `/api/courses/:id` | محافظت‌شده (JWT) | حذف یک دوره |
-| `GET` | `/api/students` | محافظت‌شده (JWT) | پرونده کامل هنرجویان به همراه سابقه ثبت‌نام‌ها |
-| `POST` | `/api/students` | محافظت‌شده (JWT) | ثبت هنرجوی جدید |
-| `POST` | `/api/students/:id/enroll` | محافظت‌شده (JWT) | ثبت‌نام مجدد یک هنرجو در دوره‌های جدید |
-| `DELETE` | `/api/students/:id` | محافظت‌شده (JWT) | حذف پرونده هنرجو |
-| `GET` | `/api/products` | عمومی | مشاهده کاتالوگ محصولات کیک و شیرینی |
-| `GET` | `/api/orders` | محافظت‌شده (JWT) | لیست کلیه سفارشات ثبت‌شده مشتریان |
-| `POST` | `/api/orders` | عمومی | ثبت سفارش جدید کیک/شیرینی توسط مشتری (Checkout) |
-| `GET` | `/api/inquiry?q=...` | عمومی | سامانه استعلام عمومی مدارک و پیگیری سفارشات با موبایل |
-
----
-
-## ۶. راهنمای هوش‌های مصنوعی یا مهندسان آینده (Developer / AI Continuity Guide)
-
-اگر در آینده یک هوش مصنوعی یا توسعه‌دهنده جدید خواست روی پروژه کار کند:
-1. **فایل سرور اصلی:** در `/server.ts` قرار دارد. این فایل سرور اکسپرس را بالا آورده و میان‌افزار Vite را در حالت Dev اجرا می‌کند.
-2. **تنظیمات و متغیرها:** در `/src/server/config.ts` تعریف شده‌اند. هر متغیر جدیدی را ابتدا در این فایل تعریف کرده و در `.env.example` مستند کنید.
-3. **تعامل با دیتابیس:** در `/src/server/db.ts` قرار دارد. برای اجرای کوئری از تابع کمکی `query(sql, params)` استفاده فرمایید تا ضد SQL Injection باشد.
-4. **مسیرهای API:** در `/src/server/routes.ts` سازمان‌دهی شده‌اند. برای محافظت از مسیرها، میان‌افزار `requireAuth` را اضافه کنید.
-5. **ارتباط فرانت‌اند با سرور:** ماژول `/src/services/apiClient.ts` مسئول ذخیره توکن در `sessionStorage` و ارسال هدر احراز هویت است.
-6. **داکر:** فایل‌های `Dockerfile` و `docker-compose.yml` در ریشه مخزن قرار دارند. برای اعمال تغییرات در کانتینرها دستور `docker compose up -d --build` را بزنید.
+برای تکمیل، ابتدا APIهای غایب و اعتبارسنجی/احراز هویت اصلاح شوند، سپس UI به API متصل شود. بعد باید ثبت سفارش در یک مرورگر و مشاهده آن در مرورگر دیگر، ماندگاری پس از restart، رفتار قطع و وصل DB، ظرفیت هم‌زمان، پشتیبان/بازیابی و نمایش تصاویر Production آزموده شود. تصمیم درباره مهاجرت داده‌های فعلی LocalStorage و سیاست ذخیره‌سازی آفلاین نیز باید صریح باشد.
